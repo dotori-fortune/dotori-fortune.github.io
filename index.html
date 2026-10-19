@@ -1347,6 +1347,17 @@ async function renderCard() {
   return out;
 }
 
+// 카톡은 세로가 가로의 1.25배쯤을 넘는 그림의 위아래를 잘라 보여 줘서, 양옆에 바탕을 덧대 비율을 맞춘다.
+const KAKAO_MAX_TALL = 1.2;
+function kakaoCard(card) {
+  const out = document.createElement("canvas");
+  out.width = Math.max(card.width, Math.ceil(card.height / KAKAO_MAX_TALL)); out.height = card.height;
+  const g = out.getContext("2d");
+  g.fillStyle = getComputedStyle(acorn).getPropertyValue("--bg").trim(); g.fillRect(0, 0, out.width, out.height);
+  g.drawImage(card, (out.width - card.width) / 2, 0);
+  return out;
+}
+
 const cardBlob = async () => new Promise(r => renderCard().then(cv => cv.toBlob(r, "image/png")));
 const cardFileName = () => `도토리점괘-${today.date}.png`;
 
@@ -1406,7 +1417,7 @@ async function kakaoShare() {
   }
   try {
     const K = await loadKakao();
-    const cv = await renderCard();
+    const cv = kakaoCard(await renderCard());
     const file = new File([await new Promise(r => cv.toBlob(r, "image/png"))], cardFileName(), { type: "image/png" });
     const up = await K.Share.uploadImage({ file: [file] });
     const link = { mobileWebUrl: shareUrl(), webUrl: shareUrl() };
