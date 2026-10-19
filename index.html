@@ -365,7 +365,6 @@
   /* 무한 도토리는 점괘 화면을 걷고 첫 화면처럼 무대와 게이지만 둔다. */
   .endless .lead, .endless .legend, .endless .result, .endless #actions, .endless .share-note { display: none; }
   .endless-hud { margin: 0; font-family: var(--font-mid); font-size: 20px; }
-  .endless-hud .lives { color: var(--seal); letter-spacing: 2px; }
   .endless-hud[hidden], .endless-over[hidden], button.roll[hidden], .rank-form[hidden] { display: none; }
   .endless-over {
     width: min(480px, 100%);
@@ -1256,8 +1255,9 @@ function relayout() {
 
 /* ---------- 무한 도토리 ---------- */
 
-// 난이도는 깬 개수로만 오른다. 칸 위치만 오늘 날짜를 씨앗으로 뽑아 같은 날에는 모두 같은 판을 깬다.
-const ENDLESS = { lives: 3, hp: 4, speed: 0.9, speedStep: 0.06, speedMax: 2.2, zone: 1.15, zoneStep: 0.04, zoneMin: 0.6, twistFrom: 3 };
+// 한 번에 깨지고 헛손질 한 번이면 끝난다. 난이도는 깬 개수로만 오르고,
+// 칸 위치만 오늘 날짜를 씨앗으로 뽑아 같은 날에는 모두 같은 판을 깬다.
+const ENDLESS = { hp: 1, speed: 0.9, speedStep: 0.05, speedMax: 2.2, zone: 0.75, zoneStep: 0.03, zoneMin: 0.4, twistFrom: 3 };
 const ENDLESS_TWISTS = ["wobble", "drift", "narrow", "flip"];
 const ENDLESS_FLIP_EVERY = 1.1;
 const ENDLESS_POP_MS = 420;
@@ -1292,15 +1292,11 @@ function nextEndlessAcorn() {
 }
 
 function renderHud() {
-  const hud = $("endless-hud");
-  const lives = document.createElement("span");
-  lives.className = "lives";
-  lives.textContent = "♥".repeat(endless.lives) + "♡".repeat(ENDLESS.lives - endless.lives);
-  hud.replaceChildren(lives, ` · 도토리 ${endless.count}개 · ${endless.score}점`);
+  $("endless-hud").textContent = `도토리 ${endless.count}개 · ${endless.score}점`;
 }
 
 function startEndless() {
-  endless = { rnd: seeded(daySeed(todayKey())), count: 0, score: 0, perfects: 0, taps: 0, lives: ENDLESS.lives, over: false, day: todayKey() };
+  endless = { rnd: seeded(daySeed(todayKey())), count: 0, score: 0, perfects: 0, taps: 0, over: false, day: todayKey() };
   document.body.classList.remove("done");
   document.body.classList.add("endless");
   $("endless-over").hidden = true;
@@ -1331,15 +1327,15 @@ async function endlessHit(kind) {
   endless.taps++;
   endless.score += DAMAGE[kind];
   if (kind === "perfect") endless.perfects++;
-  if (kind === "miss") endless.lives--;
-  if (hp >= acornType.hp) {
-    endless.count++;
-    await popAcorn();
-    nextEndlessAcorn();
-    resetAcorn();
-  } else await wait(reduceMotion ? 0 : 200);
+  if (kind === "miss") {
+    await wait(reduceMotion ? 0 : 200);
+    return endEndless();
+  }
+  endless.count++;
+  await popAcorn();
+  nextEndlessAcorn();
+  resetAcorn();
   renderHud();
-  if (endless.lives <= 0) return endEndless();
   gauge.newZone(false);
   gauge.paused = false;
 }

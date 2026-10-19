@@ -2,7 +2,7 @@
 const ORIGINS = [/^https:\/\/dotori-fortune\.github\.io$/, /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/];
 const TOP = 10;
 const NAME_MAX = 8;
-const LIVES = 3;
+const MISSES = 1;
 const SCORE_MAX = 5000;
 const DAY_MS = 86400000;
 
@@ -19,11 +19,11 @@ function validDay(day) {
 const validPlayer = p => typeof p === "string" && /^[0-9a-f-]{36}$/.test(p);
 const isCount = n => Number.isInteger(n) && n >= 0 && n <= SCORE_MAX;
 
-// 점수는 딱 2점·톡 1점의 합이고, 판은 헛손질 세 번에 끝나므로 서로 맞아야 한다.
+// 점수는 딱 2점·톡 1점의 합이다. 맞히면 한 번에 깨지고 헛손질 한 번에 끝나므로 서로 맞아야 한다.
 function validRun({ score, count, perfects, taps }) {
   if (![score, count, perfects, taps].every(isCount)) return false;
-  const goods = taps - perfects - LIVES;
-  return goods >= 0 && score === 2 * perfects + goods && count * 2 <= taps - LIVES;
+  const goods = taps - perfects - MISSES;
+  return goods >= 0 && score === 2 * perfects + goods && count === taps - MISSES;
 }
 
 async function ranking(env, day, player) {
