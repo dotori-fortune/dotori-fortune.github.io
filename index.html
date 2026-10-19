@@ -1,0 +1,1581 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>도토리 점괘</title>
+<meta name="description" content="하루 한 번, 도토리를 톡톡 깨서 오늘의 점괘를 받아요.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dotori-fortune.github.io/">
+<meta property="og:title" content="도토리 점괘">
+<meta property="og:description" content="하루 한 번, 도토리를 톡톡 깨서 오늘의 점괘를 받아요.">
+<meta property="og:image" content="https://dotori-fortune.github.io/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
+<style>
+  :root {
+    --px: 4px;
+    --bg: #D9E4C2;
+    --ink: #24301A;
+    --ink-soft: #55653D;
+    --outline: #26180B;
+    --stem: #4A3218;
+    --cap-light: #A7804C;
+    --cap: #7E5C34;
+    --cap-dark: #57401F;
+    --acorn-hi: #F8DBA4;
+    --acorn-light: #E39C50;
+    --acorn: #C2702F;
+    --acorn-dark: #8E4D1E;
+    --acorn-seat: #E9BC7C;
+    --acorn-inner: #F5E2B5;
+    --ground-light: #A9C46F;
+    --ground: #88A653;
+    --ground-dark: #6A8840;
+    --ground-edge: #3F5626;
+    --grass: #C3DB84;
+    --pebble: #B9B49A;
+    --shadow: rgba(38, 50, 20, .28);
+    --dust: #EEF2DC;
+    --sky-deco: #F4F7E9;
+    --wood-far: #CCDAB0;
+    --wood-near: #BDCF9C;
+    --bg-deco: #CBD8AD;
+    --paper: #F4F6EA;
+    --on-dark: #F4F6EA;
+    --border: #24301A;
+    --drop: rgba(36, 48, 26, .35);
+    /* 쪽지는 테마와 관계없이 밝은 종이에 먹 글씨로 둔다. */
+    --slip-paper: #FFF4D6;
+    --slip-ink: #2B1C0E;
+    --slip-line: #8E4D1E;
+    --seal: #B8432C;
+    --kakao: #FEE500;
+    --kakao-hover: #F2D900;
+    --on-kakao: #191600;
+    --gap-s: 8px;
+    --gap-m: 16px;
+    --gap-l: 32px;
+    --stage-max: 760px;
+    --font-body: "Galmuri9", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    --font-mid: "Galmuri11", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    --font-title: "Galmuri14", "Galmuri11", "Noto Sans KR", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #18210F;
+      --ink: #E4ECD2;
+      --ink-soft: #9FAE86;
+      --ground-light: #4E6A2C;
+      --ground: #3D5524;
+      --ground-dark: #2D401A;
+      --ground-edge: #111A08;
+      --grass: #6E8F3C;
+      --pebble: #6F7260;
+      --shadow: rgba(0, 0, 0, .4);
+      --dust: #9FAE86;
+      --sky-deco: #F3E9A6;
+      --wood-far: #1D2813;
+      --wood-near: #222F17;
+      --bg-deco: #212C16;
+      --paper: #25301A;
+      --border: #0B1005;
+      --drop: rgba(0, 0, 0, .5);
+    }
+  }
+  * { box-sizing: border-box; }
+  /* 화면 전체에 깔리는 숲 배경. 글을 가리지 않게 바탕색과 가까운 색만 쓴다. */
+  .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .backdrop svg { position: absolute; left: 0; top: 0; shape-rendering: crispEdges; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 18px;
+    line-height: 1.75;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: none;
+  }
+  /* 한 화면에 다 들어가게 세로로 쌓고, 남는 높이는 무대가 가져간다. */
+  main {
+    max-width: 560px;
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: var(--gap-m) var(--gap-m) var(--gap-l);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+  /* 픽셀 글꼴은 원래 크기의 정수배일 때만 칸이 또렷하다(9→18, 11→22, 14→56). */
+  h1 {
+    font-family: var(--font-title);
+    font-weight: 400;
+    font-size: 56px;
+    line-height: 1.3;
+    margin: 0 0 var(--gap-s);
+    color: var(--acorn);
+    text-shadow: var(--px) var(--px) 0 var(--outline);
+  }
+  .lead { margin: 0; color: var(--ink-soft); text-wrap: pretty; }
+
+  svg { shape-rendering: crispEdges; }
+  /* 무대만 본문 폭보다 넓게 터서 도토리를 크게 그린다. */
+  .stage {
+    --stage-w: min(var(--stage-max), calc(100vw - 2 * var(--gap-m)));
+    width: var(--stage-w);
+    margin-left: calc(50% - var(--stage-w) / 2);
+    position: relative;
+    flex: 1 1 0;
+    margin-top: var(--gap-m);
+    margin-bottom: var(--gap-m);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .stage > * { position: absolute; left: 0; top: 0; }
+  .ground, .sky { z-index: 0; }
+  .shadow, .slip { z-index: 1; }
+  .acorn { z-index: 2; }
+  .dust { z-index: 3; width: 8px; height: 8px; }
+  .pop { z-index: 4; }
+  .acorn svg { position: absolute; left: 0; top: 0; overflow: visible; }
+  .slip[hidden] { display: none; }
+
+  /* 점괘 쪽지: 안쪽 테두리, 세로로 쓴 등급, 도토리 도장, 찢은 아래 끝. 무대 위 쪽지와 결과 카드가 같이 쓴다. */
+  .strip {
+    --strip-w: 112px;
+    --strip-head: 36px;
+    --strip-font: 56px;
+    --frame: 8px;
+    position: relative;
+    flex: none;
+    width: var(--strip-w);
+    padding: calc(var(--frame) + var(--px));
+    background: var(--slip-paper);
+    color: var(--slip-ink);
+    margin: var(--px) var(--px) 12px;
+    box-shadow:
+      inset 0 0 0 var(--frame) var(--slip-paper),
+      inset 0 0 0 calc(var(--frame) + var(--px)) var(--slip-line),
+      0 calc(-1 * var(--px)) 0 0 var(--outline),
+      calc(-1 * var(--px)) 0 0 0 var(--outline),
+      var(--px) 0 0 0 var(--outline);
+  }
+  .strip::before, .strip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: calc(-1 * var(--px));
+    right: calc(-1 * var(--px));
+    height: 8px;
+    -webkit-mask: var(--tear) repeat-x; mask: var(--tear) repeat-x;
+  }
+  .strip::before { --tear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Crect width='8' height='4'/%3E%3Crect x='8' y='4' width='8' height='4'/%3E%3C/svg%3E"); background: var(--outline); }
+  .strip::after { --tear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Crect x='8' width='8' height='4'/%3E%3C/svg%3E"); background: var(--slip-paper); }
+  .strip-head {
+    height: var(--strip-head);
+    display: grid;
+    place-items: center;
+    color: var(--slip-line);
+    letter-spacing: .2em;
+    box-shadow: 0 var(--px) 0 0 var(--slip-line);
+  }
+  .strip-head:empty { display: none; }
+  .strip-grade {
+    padding: var(--gap-m) 0 12px;
+    font-family: var(--font-title);
+    font-size: var(--strip-font);
+    line-height: 1.15;
+    text-align: center;
+    white-space: pre-line;
+  }
+  .strip-seal { display: block; width: 50%; height: auto; margin: 0 auto var(--gap-s); }
+  .slip.strip { position: absolute; --strip-w: 56px; --strip-font: 22px; --frame: var(--px); margin: 0; font-family: var(--font-mid); }
+  .slip .strip-grade { padding: 4px 0; }
+  .slip .strip-seal { width: 60%; margin-bottom: 2px; }
+  .pop {
+    font-family: var(--font-mid);
+    font-size: 22px;
+    white-space: nowrap;
+    color: var(--ink);
+    text-shadow: var(--px) var(--px) 0 var(--bg);
+  }
+  .pop.perfect { color: var(--acorn); font-size: 44px; }
+  .pop.miss { color: var(--ink-soft); }
+
+  .gauge {
+    position: relative;
+    width: min(280px, 100%);
+    height: 24px;
+    margin: 0 auto calc(var(--gap-l) + var(--gap-m));
+    background: var(--paper);
+  }
+  .gauge[hidden] { display: none; }
+  .gauge .zone { position: absolute; top: 0; bottom: 0; }
+  .gauge .good { background: var(--ground-light); }
+  .gauge .perfect { background: var(--acorn); }
+  /* 게이지 아래 여백 안에 띄워 화면 높이를 늘리지 않는다. */
+  .gauge-hint {
+    position: absolute;
+    left: 50%; top: calc(100% + var(--gap-s));
+    transform: translateX(-50%);
+    margin: 0;
+    white-space: nowrap;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .gauge-hint.twist { color: var(--acorn-dark); }
+  /* 도토리 종류마다 몸통 색만 바꾼다. */
+  .acorn.soft { --acorn-light: #EDB06A; --acorn: #D98A45; --acorn-dark: #A9632B; }
+  .acorn.hard { --acorn-light: #B98552; --acorn: #8F5B2E; --acorn-dark: #603C1C; }
+  .acorn.stubborn { --acorn-light: #E0864A; --acorn: #B8532A; --acorn-dark: #7E3417; }
+  .gauge .cursor {
+    position: absolute;
+    left: 0; top: -8px;
+    width: 8px; height: 40px;
+    background: var(--outline);
+  }
+  .sky .star { display: none; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .sky .star { display: inline; }
+    :root:not([data-theme="light"]) .sky .cloud { display: none; }
+  }
+
+  /* 네 변에만 테두리 그림자를 깔아 모서리 한 칸이 비게 한다. 도트 그림의 둥근 모서리다. */
+  .pixel-box {
+    border: 0;
+    box-shadow:
+      0 calc(-1 * var(--px)) 0 0 var(--border),
+      0 var(--px) 0 0 var(--border),
+      calc(-1 * var(--px)) 0 0 0 var(--border),
+      var(--px) 0 0 0 var(--border),
+      var(--px) calc(2 * var(--px)) 0 0 var(--drop),
+      calc(2 * var(--px)) var(--px) 0 0 var(--drop);
+  }
+  button.roll {
+    font-family: var(--font-mid);
+    font-size: 22px;
+    color: var(--on-dark);
+    background: var(--cap);
+    padding: 12px var(--gap-l) 16px;
+    cursor: pointer;
+    box-shadow:
+      inset 0 calc(-1 * var(--px)) 0 0 var(--cap-dark),
+      inset 0 var(--px) 0 0 var(--cap-light),
+      0 calc(-1 * var(--px)) 0 0 var(--border),
+      0 var(--px) 0 0 var(--border),
+      calc(-1 * var(--px)) 0 0 0 var(--border),
+      var(--px) 0 0 0 var(--border),
+      var(--px) calc(2 * var(--px)) 0 0 var(--drop),
+      calc(2 * var(--px)) var(--px) 0 0 var(--drop);
+  }
+  button.roll:hover { background: var(--cap-light); }
+  button.roll:active:not(:disabled) {
+    transform: translate(var(--px), var(--px));
+    box-shadow:
+      inset 0 var(--px) 0 0 var(--cap-dark),
+      0 calc(-1 * var(--px)) 0 0 var(--border),
+      0 var(--px) 0 0 var(--border),
+      calc(-1 * var(--px)) 0 0 0 var(--border),
+      var(--px) 0 0 0 var(--border);
+  }
+  button.roll:focus-visible { outline: var(--px) dashed var(--acorn-light); outline-offset: 12px; }
+  /* 다 깬 뒤에는 누를 일이 없으니 버튼 모양을 지우고 안내 한 줄로 둔다. */
+  button.roll:disabled {
+    border: 0;
+    outline: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--ink-soft);
+    font-size: 18px;
+    padding: 0;
+    cursor: default;
+  }
+
+  .result {
+    margin: var(--gap-m) var(--px) 0;
+    padding: var(--gap-l);
+    background: var(--paper);
+  }
+  .result[hidden] { display: none; }
+  .result-main { display: flex; gap: var(--gap-l); align-items: flex-start; text-align: left; margin-bottom: var(--gap-m); }
+  .result-date { margin: 0 0 var(--gap-s); color: var(--ink-soft); }
+  .result-type::before { content: " · "; }
+  .result h2 { font-family: var(--font-mid); font-weight: 400; font-size: 22px; margin: 0 0 var(--gap-s); }
+  .result p { margin: 0 0 var(--gap-m); text-wrap: pretty; }
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--gap-m);
+    margin: 0;
+    padding-top: var(--gap-m);
+    border-top: var(--px) dashed var(--ink-soft);
+    text-align: left;
+  }
+  .facts dt { color: var(--ink-soft); margin-bottom: var(--gap-s); }
+  .facts dd { margin: 0; text-wrap: pretty; }
+  @media (max-width: 560px) {
+    .result { padding: 12px var(--gap-m); }
+    /* 좁은 칸에서는 날짜 뒤에서 어색하게 꺾이지 않게 종류를 아랫줄로 내린다. */
+    .result-type { display: block; }
+    .result-type::before { content: none; }
+    .result-main { gap: var(--gap-m); }
+    .result .strip { --strip-w: 88px; --strip-head: 28px; --strip-font: 42px; --frame: 6px; }
+    .facts { grid-template-columns: 1fr; gap: var(--gap-s); }
+    .facts div { display: grid; grid-template-columns: 6.5em 1fr; }
+    .facts dt { margin: 0; }
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--gap-m);
+    margin-top: var(--gap-m);
+  }
+  .actions[hidden] { display: none; }
+  .tool.kakao { background: var(--kakao); color: var(--on-kakao); }
+  .tool.kakao:hover { background: var(--kakao-hover); }
+  .tool {
+    font: inherit;
+    color: var(--ink);
+    background: var(--bg);
+    padding: 2px 12px;
+    margin: var(--px);
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .tool:hover { background: var(--ground-light); }
+  .tool:focus-visible { outline: var(--px) dashed var(--acorn); outline-offset: 8px; }
+  @media (max-width: 560px) {
+    .actions { gap: var(--gap-s); }
+    .tool { padding: 2px var(--gap-s); }
+  }
+  .tool[hidden] { display: none; }
+  .tool[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+  .share-note { margin: var(--gap-s) 0 0; color: var(--ink-soft); }
+
+  .legend {
+    margin: var(--gap-m) 0 0;
+    color: var(--ink-soft);
+    text-wrap: pretty;
+  }
+
+  /* 다 깬 뒤에는 안내 문구를 걷고, 넓은 화면에서는 도토리와 점괘를 나란히 둔다. */
+  .done .lead, .done .legend { display: none; }
+  @media (min-width: 960px) {
+    .done main {
+      max-width: 1120px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-areas: "title title" "stage result" "roll actions" "note note";
+      column-gap: 48px;
+      align-content: center;
+    }
+    .done h1 { grid-area: title; }
+    .done .stage { grid-area: stage; width: 100%; height: 100%; margin: 0; align-self: center; }
+    .done .roll { grid-area: roll; margin-top: var(--gap-m); align-self: start; }
+    .done .result { grid-area: result; margin-top: 0; }
+    .done .actions { grid-area: actions; }
+    .done .share-note { grid-area: note; }
+  }
+  /* 좁은 화면은 점괘 카드가 등급을 보여 주니 무대 위 쪽지를 걷고 무대를 누운 반쪽 높이로 줄인다. */
+  @media (max-width: 959px) {
+    .done h1 { font-size: 42px; }
+    .done .slip { display: none; }
+    .done .roll { order: 1; margin-top: var(--gap-s); font-size: 18px; }
+  }
+  /* 키 작은 휴대폰은 점괘와 공유 버튼을 한 화면에 담으려고 쪼개진 도토리를 걷는다. */
+  @media (max-width: 959px) and (max-height: 820px) {
+    .done .stage { display: none; }
+    .done h1 { font-size: 30px; margin-bottom: 0; }
+    .done main { padding-bottom: var(--gap-m); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>도토리 점괘</h1>
+  <p class="lead">하루 한 번, 도토리를 깨서 속에 든 점괘를 꺼내요.</p>
+
+  <div class="stage" id="stage" aria-hidden="true"></div>
+
+  <div class="gauge pixel-box" id="gauge" aria-hidden="true">
+    <div class="zone good"></div>
+    <div class="zone perfect"></div>
+    <div class="cursor"></div>
+    <p class="gauge-hint" id="gauge-hint"></p>
+  </div>
+
+  <button class="roll" id="roll" type="button">두드리기</button>
+
+  <section class="result pixel-box" id="result" hidden aria-live="polite">
+    <div class="result-main">
+      <div class="strip"><div class="strip-head">점괘</div><div class="strip-grade" id="grade"></div></div>
+      <div>
+        <p class="result-date"><span id="result-date"></span><span class="result-type" id="result-type"></span></p>
+        <h2 id="title"></h2>
+        <p id="body"></p>
+      </div>
+    </div>
+    <dl class="facts">
+      <div><dt>깬 솜씨</dt><dd id="skill"></dd></div>
+      <div><dt>오늘의 행운</dt><dd id="lucky"></dd></div>
+      <div><dt>살펴볼 것</dt><dd id="careful"></dd></div>
+    </dl>
+  </section>
+
+  <div class="actions" id="actions" hidden>
+    <button class="tool kakao pixel-box" id="share-kakao" type="button" hidden>카카오톡 공유</button>
+    <button class="tool pixel-box" id="share-native" type="button" hidden>공유하기</button>
+    <button class="tool pixel-box" id="save-img" type="button">이미지 저장</button>
+    <button class="tool pixel-box" id="copy-link" type="button" hidden>링크 복사</button>
+    <a class="tool pixel-box" id="share-x" target="_blank" rel="noopener" hidden>X에 공유</a>
+    <a class="tool pixel-box" id="share-fb" target="_blank" rel="noopener" hidden>페이스북에 공유</a>
+  </div>
+  <p class="share-note" id="share-note" aria-live="polite"></p>
+
+  <p class="legend">진한 칸을 맞히면 금이 크게 가요.</p>
+</main>
+
+<script>
+const PX = 4;
+const GRID_W = 20, GRID_H = 24;
+// 반쪽의 회전축 열. 바깥 끝에서 4칸 안쪽이라 누웠을 때 바닥선이 같은 행에 온다.
+const PIVOT_L = 4, PIVOT_R = GRID_W - 4, PIVOT_Y = 12;
+// 누운 두 반쪽의 금 간 끝이 가운데에서 2칸씩 떨어지게 미는 거리.
+const SPLIT_DX = GRID_W / 2 + 2 - (PIVOT_R - PIVOT_Y), SPLIT_DY = 7;
+// 쪼개진 두 반쪽과 그림자가 차지하는 너비(칸 수). 이 너비가 무대에 들어가는 한 가장 큰 칸 크기를 쓴다.
+const SPLIT_SPAN_CELLS = 52;
+const CELL_MIN = 6, CELL_MAX = 14;
+// 무대 높이 = 칸 수 × CELL + 여백. 깨기 전에는 도토리 전체, 깬 뒤에는 누운 반쪽과 쪽지만 들어가면 된다.
+const STAGE_FIT = { whole: { rows: GRID_H, extra: 88 }, split: { rows: 11, extra: 160 }, splitCompact: { rows: 11, extra: 40 } };
+const wideLayout = matchMedia("(min-width: 960px)");
+let CELL = CELL_MIN, SPRITE_W = 0, SPRITE_H = 0;
+// 오늘 깰 도토리. hp 는 깨는 데 드는 피해, zone 은 칸 너비 배율이다.
+const ACORN_TYPES = [
+  { id: "soft", name: "말랑한 도토리", hp: 3, zone: 1.25, speed: 0.8 },
+  { id: "plain", name: "보통 도토리", hp: 4, zone: 1, speed: 0.9 },
+  { id: "stubborn", name: "고집 센 도토리", hp: 5, zone: 0.8, speed: 1.05 },
+  { id: "hard", name: "단단한 도토리", hp: 6, zone: 1, speed: 1 },
+];
+// 두 번째 타격부터 매번 하나를 뽑는다. 첫 타격과 steady 는 평소 게이지다.
+const GAUGE_MODES = {
+  steady: "",
+  wobble: "속도가 출렁여요",
+  drift: "칸이 움직여요",
+  narrow: "칸이 좁아졌어요",
+  flip: "커서가 갑자기 돌아서요",
+};
+const TWIST_CHANCE = 0.4;
+const NARROW_SCALE = 0.75, DRIFT_SPEED = 0.25, WOBBLE = 0.45, FLIP_PER_SEC = 0.9;
+const GAUGE_SPEED_MAX = 1.8;
+// 헛손질을 한 번이라도 하면 그 판은 끝까지 변형을 끄고, 헛손질마다 칸을 넓히고 커서를 늦춘다.
+const MERCY_FROM = 1, MERCY_ZONE_STEP = 0.25, MERCY_ZONE_MAX = 2.5, MERCY_SLOW = 0.75;
+const DAMAGE = { perfect: 2, good: 1, miss: 0 };
+const POP_TEXT = { perfect: "딱!", good: "톡", miss: "헛손질" };
+const ZONE = { good: 0.3, perfect: 0.09 };
+const GAUGE_SPEEDUP = 0.2;
+// 금이 가는 정도마다 그어지는 행 범위. 마지막 단계 뒤에 쪼개진다.
+const CRACK_ROWS = [null, [10, 14], [6, 18], [3, 21]];
+
+const COLORS = {
+  O: "--outline", S: "--stem",
+  C1: "--cap-light", C2: "--cap", C3: "--cap-dark",
+  H: "--acorn-hi", A1: "--acorn-light", A2: "--acorn", A3: "--acorn-dark", P: "--acorn-seat",
+  I: "--acorn-inner",
+};
+
+const FORTUNES = [
+  ["대길", "참나무 기운이 가득해요", "오늘은 뭘 해도 뿌리가 내리는 날이에요. 미뤄 둔 일을 시작하면 참나무처럼 오래 갑니다."],
+  ["대길", "다람쥐가 부러워해요", "오늘 모은 건 오래 남아요. 작은 저축이나 메모 하나가 나중에 큰 도움이 됩니다."],
+  ["길", "술술 굴러가는 하루예요", "일이 대체로 술술 풀려요. 다만 옆 사람은 쉬고 싶어 하니 재촉하지 마세요."],
+  ["길", "칭찬이 굴러들어 와요", "뜻밖의 칭찬을 듣는 날이에요. 겸손하게 받으면 한 번 더 들어옵니다."],
+  ["길", "햇볕 잘 드는 날이에요", "밖에 나갈 일이 있다면 오늘 가세요. 걷다가 좋은 소식을 듣게 됩니다."],
+  ["소길", "꾸준히 굴러가는 날이에요", "내 속도대로 가면 되는 날이에요. 오후에 작은 보상이 기다립니다."],
+  ["평", "느긋하게 흘러가요", "큰일 없이 지나가는 하루예요. 잃어버린 물건이 엉뚱한 데서 나올 수 있어요."],
+  ["쉼", "누워도 되는 날이에요", "오늘은 쉬어 가도 괜찮아요. 일찍 자면 내일 운이 두 배로 굴러옵니다."],
+  ["파격", "모자를 벗어 던질 때예요", "체면은 잠깐 내려놓으세요. 오늘은 솔직하게 말할수록 잘 통합니다."],
+  ["변화", "하나만 바꿔 보세요", "익숙한 걸 바꿔 보기 좋은 날이에요. 머리 모양이든 출근길이든 하나만 바꿔 보세요."],
+  ["묘", "갈림길이 셋이에요", "세 갈래 길이 다 열려 있는 날이에요. 고민되면 가장 재밌어 보이는 쪽을 고르세요."],
+  ["살핌", "주머니를 챙겨요", "나가기 전에 주머니를 한 번 확인하면 하루가 가벼워요. 빠뜨린 게 없으니 마음도 편합니다."],
+  ["대길", "도토리가 꽉 찼어요", "준비한 만큼 결과가 나오는 날이에요. 오늘 내놓는 건 무엇이든 제값을 받습니다."],
+  ["대길", "숲 전체가 내 편이에요", "부탁하면 다 들어주는 날이에요. 미뤄 둔 도움 요청을 오늘 꺼내 보세요."],
+  ["길", "주머니가 묵직해져요", "생각지 않은 데서 작은 이득이 생겨요. 쌓아 둔 포인트나 쿠폰을 한 번 확인해 보세요."],
+  ["길", "발걸음이 가벼운 날이에요", "몸이 먼저 움직이는 날이에요. 고민은 짧게 하고 일단 시작하면 잘 풀립니다."],
+  ["길", "좋은 소식이 굴러와요", "기다리던 연락이 오는 날이에요. 휴대폰을 무음으로 두지 마세요."],
+  ["길", "말 한마디가 잘 통해요", "오늘은 말이 잘 먹혀요. 하고 싶던 제안이 있다면 오늘 꺼내세요."],
+  ["소길", "작은 도토리도 도토리예요", "큰 성과는 없어도 하나씩 쌓이는 날이에요. 작은 일부터 끝내면 마음이 편해집니다."],
+  ["소길", "볕이 한 줌 들어요", "하루 중에 잠깐 볕 드는 순간이 와요. 그때 잠깐 쉬어 가면 충분합니다."],
+  ["소길", "점심이 맛있는 날이에요", "오늘의 행복은 밥상에 있어요. 처음 가 보는 식당을 골라도 실패하지 않습니다."],
+  ["평", "바람이 잔잔해요", "특별할 것 없는 하루지만 그래서 좋아요. 평소 하던 대로 하면 됩니다."],
+  ["평", "다람쥐도 낮잠 자는 날", "급한 일은 생각보다 급하지 않아요. 하나씩 차례대로 하면 저녁 전에 끝납니다."],
+  ["쉼", "굴을 따뜻하게 데워요", "밖보다 안이 좋은 날이에요. 약속을 줄이고 좋아하는 걸 하며 보내세요."],
+  ["쉼", "도토리는 땅속에서 자라요", "아무것도 안 하는 것 같아도 자라는 중이에요. 오늘은 조급해하지 않아도 됩니다."],
+  ["파격", "굴러가는 방향을 바꿔요", "늘 고르던 것 말고 반대쪽을 골라 보세요. 뜻밖의 재미가 기다립니다."],
+  ["변화", "새싹이 고개를 들어요", "새로 시작한 일에 첫 반응이 오는 날이에요. 작은 반응이라도 반갑게 받으세요."],
+  ["변화", "자리를 옮겨 보세요", "늘 앉던 자리를 바꾸면 생각도 바뀌어요. 막힌 일이 있다면 장소부터 바꿔 보세요."],
+  ["묘", "도토리가 두 알이에요", "같은 일이 두 번 일어나는 날이에요. 두 번째가 더 좋으니 처음에 바로 정하지 마세요."],
+  ["묘", "다람쥐가 지켜보고 있어요", "누군가 내 수고를 알아봐 주는 날이에요. 늘 하던 대로 하면 됩니다."],
+  ["살핌", "천천히 걸어요", "천천히 가도 늦지 않는 날이에요. 계단은 한 칸씩 내려가면 됩니다."],
+  ["살핌", "한 박자 쉬어요", "한 번 쉬었다 말하면 더 잘 전해지는 날이에요. 바로 답하지 않아도 괜찮아요."],
+  ["살핌", "일정을 훑어봐요", "아침에 일정을 한 번 훑어 두면 하루가 느긋해져요. 남는 시간도 생깁니다."],
+];
+const LUCKY = ["따뜻한 보리차", "갈색 양말", "왼쪽 주머니", "도토리묵 한 접시", "두 번째 서랍", "점심 뒤 산책 15분", "둥근 머그잔", "창가 자리", "오래된 노래", "빵 끝부분",
+  "노란 포스트잇", "따뜻한 군밤", "갓 구운 빵", "초록색 펜", "손글씨 메모", "창밖 구름", "단골 가게",
+  "오후 3시", "줄무늬 옷", "작은 화분", "주머니 속 동전", "새 양말", "한 정거장 걷기", "점심 메뉴 2번"];
+const CAREFUL = ["급하게 보내는 답장", "계단 마지막 칸", "충전 안 한 이어폰", "세 번째 디저트", "열어 둔 가방", "세 번째 커피", "자정 넘은 야식", "젖은 우산 자리",
+  "뜨거운 국물", "자기 전 휴대폰", "너무 오래 앉아 있기", "발에 걸리는 전선", "우산 두고 나가기", "충동 구매",
+  "늦은 낮잠", "배터리 10%", "급한 결정", "닫히는 지하철 문", "꽉 닫힌 병뚜껑", "문턱"];
+
+const CLOUD = ["...XXX......", "..XXXXX.XX..", ".XXXXXXXXXX.", "XXXXXXXXXXXX"];
+// 붉은 도장 안에 도토리 모양을 비워 둔다.
+const SEAL = [
+  "RRRRRRRRRRR",
+  "R.........R",
+  "R.RRRRRRR.R",
+  "R.RRR.RRR.R",
+  "R.R.....R.R",
+  "R.RR...RR.R",
+  "R.RR...RR.R",
+  "R.RRR.RRR.R",
+  "R.RRRRRRR.R",
+  "R.........R",
+  "RRRRRRRRRRR",
+];
+
+// 타격마다 터지는 빛살. frames 는 [중심에서 떨어진 칸, 빛살 길이] 이고 한 프레임씩 바깥으로 번진다.
+const DIRS_8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+const BURST = {
+  good: { dirs: DIRS_8.filter((_, i) => i % 2 === 0), core: 1, frames: [[1, 1], [2, 2], [4, 1]] },
+  perfect: { dirs: DIRS_8, core: 3, frames: [[1, 2], [2, 3], [4, 3], [6, 2], [8, 1]] },
+  final: { dirs: DIRS_8, core: 5, frames: [[2, 3], [4, 4], [7, 4], [10, 3], [13, 2], [16, 1]] },
+};
+const BURST_FRAME_MS = 60;
+
+const stage = document.getElementById("stage");
+const rollBtn = document.getElementById("roll");
+const gaugeEl = document.getElementById("gauge");
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const pickIndex = arr => Math.floor(Math.random() * arr.length);
+const pick = arr => arr[pickIndex(arr)];
+const snap = (v, unit = PX) => Math.round(v / unit) * unit;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const stepped = frames => frames.map(f => ({ ...f, easing: "steps(1, end)" }));
+
+/* ---------- 스프라이트 ---------- */
+
+const emptyGrid = () => Array.from({ length: GRID_H }, () => Array(GRID_W).fill(null));
+
+function fillRows(grid, rows, colorAt) {
+  rows.forEach(([y, s, e]) => { for (let x = s; x <= e; x++) grid[y][x] = colorAt(x, y, s, e); });
+}
+
+function withOutline(grid) {
+  const out = grid.map(r => r.slice());
+  for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) {
+    if (grid[y][x]) continue;
+    const near = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy]?.[x + dx]);
+    if (near) out[y][x] = "O";
+  }
+  return out;
+}
+
+function capGrid() {
+  const g = emptyGrid();
+  g[1][10] = g[1][11] = g[2][10] = "S";
+  fillRows(g, [[3, 6, 13], [4, 3, 16], [5, 2, 17], [6, 1, 18], [7, 1, 18], [8, 1, 18], [9, 2, 17]], (x, y, s, e) => {
+    if (y === 9) return "C3";
+    if (y === 3) return x >= e - 1 ? "C2" : "C1";
+    if ((x + (y % 2) * 2) % 4 === 0) return "C3";
+    if (x >= e - 1) return "C3";
+    if (x <= s + 2 && y <= 6) return "C1";
+    return "C2";
+  });
+  return withOutline(g);
+}
+
+function bodyGrid() {
+  const g = emptyGrid();
+  const rows = [[9, 3, 16], [10, 2, 17], [11, 2, 17], [12, 2, 17], [13, 2, 17], [14, 2, 17], [15, 2, 17],
+                [16, 3, 16], [17, 4, 15], [18, 5, 14], [19, 6, 13], [20, 7, 12], [21, 8, 11]];
+  fillRows(g, rows, (x, y, s, e) => {
+    if (y >= 20) return "A3";
+    if (x === s + 1 && y >= 11 && y <= 15) return "H";
+    if (x === s + 2 && y === 12) return "H";
+    const u = (x - s) / (e - s);
+    if (u < 0.2) return "A1";
+    if (u < 0.7) return "A2";
+    return "A3";
+  });
+  return withOutline(g);
+}
+
+function wholeGrid() {
+  const body = bodyGrid(), cap = capGrid();
+  return body.map((row, y) => row.map((c, x) => cap[y][x] && !(cap[y][x] === "O" && c && c !== "O") ? cap[y][x] : c));
+}
+
+const crackX = y => GRID_W / 2 - 1 + (Math.floor(y / 3) % 2);
+
+// 금 자리는 양쪽 모두 외곽선이 되고, 그 바로 옆 칸은 속살(모자 쪽은 그늘색)로 칠한다.
+function halfGrid(whole, left) {
+  const g = emptyGrid();
+  whole.forEach((row, y) => row.forEach((c, x) => {
+    if (!c) return;
+    const cx = crackX(y);
+    if (x === cx) { g[y][x] = "O"; return; }
+    if (left ? x > cx : x < cx) return;
+    const edge = x === (left ? cx - 1 : cx + 1);
+    g[y][x] = edge && c !== "O" ? (y >= 10 ? "I" : "C3") : c;
+  }));
+  return g;
+}
+
+function svgEl(w, h, cls) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", w); svg.setAttribute("height", h);
+  if (cls) svg.setAttribute("class", cls);
+  return svg;
+}
+
+function addRect(svg, x, y, w, h, color, cls) {
+  const r = document.createElementNS(SVG_NS, "rect");
+  r.setAttribute("x", x); r.setAttribute("y", y);
+  r.setAttribute("width", w); r.setAttribute("height", h);
+  r.setAttribute("fill", color);
+  if (cls) r.setAttribute("class", cls);
+  svg.appendChild(r);
+}
+
+// 같은 색이 가로로 이어지는 칸은 사각형 하나로 묶는다.
+function gridSvg(grid, cls) {
+  const svg = svgEl(SPRITE_W, SPRITE_H, cls);
+  grid.forEach((row, y) => {
+    let x = 0;
+    while (x < GRID_W) {
+      const c = row[x];
+      let run = 1;
+      while (c && row[x + run] === c) run++;
+      if (c) addRect(svg, x * CELL, y * CELL, run * CELL, CELL, `var(${COLORS[c]})`);
+      x += run;
+    }
+  });
+  return svg;
+}
+
+const WHOLE = wholeGrid();
+
+/* ---------- 배경 ---------- */
+
+function groundTop() { return stage.clientHeight - 56; }
+function baseY() { return stage.clientHeight - 32; }
+
+function drawScene() {
+  stage.querySelectorAll(".ground, .sky").forEach(el => el.remove());
+  const w = stage.clientWidth, h = stage.clientHeight;
+  const cols = Math.floor(w / PX), rows = 14;
+
+  const ground = svgEl(cols * PX, rows * PX + 16, "ground");
+  ground.style.transform = `translate(${snap((w - cols * PX) / 2)}px, ${groundTop() - 16}px)`;
+  const g = (x, y, wd, ht, color) => addRect(ground, x * PX, y * PX + 16, wd * PX, ht * PX, `var(${color})`);
+  const halfAt = y => {
+    const dy = (y + 0.5) / rows * 2 - 1;
+    return Math.round(cols / 2 * Math.sqrt(1 - dy * dy));
+  };
+  for (let y = 0; y < rows; y++) {
+    const half = halfAt(y), x0 = Math.floor(cols / 2) - half;
+    g(x0 - 1, y, half * 2 + 2, 1, "--ground-edge");
+    g(x0, y, half * 2, 1, y < 3 ? "--ground-light" : y < 9 ? "--ground" : "--ground-dark");
+    // 색이 바뀌는 줄은 체크무늬로 섞어 경계를 부드럽게 한다.
+    if (y === 3 || y === 9) {
+      const prev = y === 3 ? "--ground-light" : "--ground";
+      for (let x = x0 + (y % 2); x < x0 + half * 2; x += 2) g(x, y, 1, 1, prev);
+    }
+  }
+  g(Math.floor(cols / 2) - halfAt(0), -1, halfAt(0) * 2, 1, "--ground-edge");
+
+  for (let i = 0; i < Math.floor(cols / 14); i++) {
+    const half = halfAt(1);
+    const x = Math.floor(cols / 2) - half + 2 + Math.floor(Math.random() * (half * 2 - 4));
+    const y = 1 + Math.floor(Math.random() * 8);
+    g(x, y - 2, 1, 2, "--grass"); g(x + 2, y - 2, 1, 2, "--grass"); g(x + 1, y - 3, 1, 3, "--grass");
+  }
+  for (let i = 0; i < 4; i++) {
+    const half = halfAt(6);
+    const x = Math.floor(cols / 2) - half + 3 + Math.floor(Math.random() * (half * 2 - 6));
+    const y = 5 + Math.floor(Math.random() * 6);
+    g(x, y, 2, 1, "--pebble"); g(x, y + 1, 2, 1, "--ground-edge");
+  }
+
+  const sky = svgEl(w, h - 80, "sky");
+  const cloudAt = (cx, cy) => CLOUD.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch === "X") addRect(sky, snap(cx) + x * PX, snap(cy) + y * PX, PX, PX, "var(--sky-deco)", "cloud");
+  }));
+  cloudAt(w * 0.08, 24); cloudAt(w * 0.76, 72);
+  for (let i = 0; i < 9; i++) {
+    const x = snap(rand(8, w - 16)), y = snap(rand(8, h - 140));
+    addRect(sky, x, y, PX, PX, "var(--sky-deco)", "star");
+    if (i % 3 === 0) [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) =>
+      addRect(sky, x + dx * PX, y + dy * PX, PX, PX, "var(--sky-deco)", "star"));
+  }
+  stage.prepend(sky, ground);
+}
+
+function shadowSvg(units) {
+  const svg = svgEl(units * PX, 2 * PX, "shadow");
+  addRect(svg, PX, 0, (units - 2) * PX, PX, "var(--shadow)");
+  addRect(svg, 0, PX, units * PX, PX, "var(--shadow)");
+  return svg;
+}
+
+/* ---------- 도토리 ---------- */
+
+const acorn = document.createElement("div");
+acorn.className = "acorn";
+let wholeSvg, leftSvg, rightSvg, crackSvg;
+
+function sizeAcorn() {
+  const done = document.body.classList.contains("done");
+  const { rows, extra } = STAGE_FIT[!done ? "whole" : wideLayout.matches ? "split" : "splitCompact"];
+  stage.style.minHeight = `${rows * CELL_MIN + extra}px`;
+  stage.style.maxHeight = `${rows * CELL_MAX + extra}px`;
+  const byWidth = Math.floor(stage.clientWidth / SPLIT_SPAN_CELLS);
+  const byHeight = Math.floor((stage.clientHeight - extra) / rows);
+  CELL = Math.max(CELL_MIN, Math.min(CELL_MAX, byWidth, byHeight));
+  SPRITE_W = GRID_W * CELL; SPRITE_H = GRID_H * CELL;
+  acorn.style.width = `${SPRITE_W}px`; acorn.style.height = `${SPRITE_H}px`;
+  wholeSvg = gridSvg(WHOLE, "whole");
+  leftSvg = gridSvg(halfGrid(WHOLE, true), "half left");
+  rightSvg = gridSvg(halfGrid(WHOLE, false), "half right");
+  crackSvg = svgEl(SPRITE_W, SPRITE_H, "crack");
+  // 회전축을 격자 칸 경계에 둬야 누운 반쪽의 픽셀이 어긋나지 않는다.
+  leftSvg.style.transformOrigin = `${PIVOT_L * CELL}px ${PIVOT_Y * CELL}px`;
+  rightSvg.style.transformOrigin = `${PIVOT_R * CELL}px ${PIVOT_Y * CELL}px`;
+  acorn.replaceChildren(wholeSvg, crackSvg, leftSvg, rightSvg);
+}
+
+const slip = document.createElement("div");
+slip.className = "slip strip";
+slip.hidden = true;
+stage.append(slip, acorn);
+
+let shadows = [];
+let hp = 0, taps = 0, misses = 0, busy = false, today = null, acornType = ACORN_TYPES[1];
+
+const acornLeft = () => snap(stage.clientWidth / 2 - SPRITE_W / 2, CELL);
+const acornTop = () => baseY() - SPRITE_H + CELL;
+// 반쪽이 누우면 금 간 면이 위를 보도록 돈다.
+const splitFinal = side => `translate(${side * SPLIT_DX * CELL}px, ${SPLIT_DY * CELL}px) rotate(${side * 90}deg)`;
+const lyingShadow = () => [Math.round(23 * CELL / PX), 14.5 * CELL];
+
+function setShadows(list) {
+  shadows.forEach(s => s.remove());
+  shadows = list.map(([units, cx]) => {
+    const s = shadowSvg(units);
+    s.style.transform = `translate(${snap(cx - units * PX / 2)}px, ${baseY() - PX}px)`;
+    stage.appendChild(s);
+    return s;
+  });
+}
+
+// 체력이 다른 도토리도 금은 세 단계로 나눠 긋는다.
+const crackLevel = () => hp && Math.max(1, Math.floor(hp / acornType.hp * (CRACK_ROWS.length - 1)));
+
+function drawCrack(level) {
+  crackSvg.replaceChildren();
+  if (!level) return;
+  const [from, to] = CRACK_ROWS[Math.min(level, CRACK_ROWS.length - 1)];
+  for (let y = from; y <= to; y++) addRect(crackSvg, crackX(y) * CELL, y * CELL, CELL, CELL, "var(--outline)");
+}
+
+function layoutAcorn() {
+  acorn.style.transform = `translate(${acornLeft()}px, ${acornTop()}px)`;
+}
+
+function resetAcorn() {
+  layoutAcorn();
+  wholeSvg.style.display = crackSvg.style.display = "";
+  leftSvg.style.display = rightSvg.style.display = "none";
+  leftSvg.style.transform = rightSvg.style.transform = "";
+  drawCrack(crackLevel());
+  slip.hidden = true;
+  const mid = stage.clientWidth / 2;
+  setShadows([[Math.round((GRID_W - 6) * CELL / PX), mid]]);
+}
+
+function showSplitAcorn() {
+  layoutAcorn();
+  wholeSvg.style.display = crackSvg.style.display = "none";
+  leftSvg.style.display = rightSvg.style.display = "";
+  leftSvg.style.transform = splitFinal(-1);
+  rightSvg.style.transform = splitFinal(1);
+  const mid = stage.clientWidth / 2;
+  const [units, dx] = lyingShadow();
+  setShadows([[units, mid - dx], [units, mid + dx]]);
+}
+
+function placeSlip(final) {
+  slip.hidden = false;
+  const x = snap(stage.clientWidth / 2 - slip.offsetWidth / 2);
+  // 쪽지는 누운 반쪽 윗선(바닥에서 11칸)보다 위에 멈춘다.
+  const startY = acornTop() + 10 * CELL, endY = baseY() - 11 * CELL - slip.offsetHeight - 16;
+  const at = y => `translate(${x}px, ${snap(y)}px)`;
+  if (final || reduceMotion) { slip.style.transform = at(endY); return Promise.resolve(); }
+  const frames = [0, 1, 2, 3, 4, 5, 6].map(k => ({ transform: at(startY + (endY - startY) * k / 6) }));
+  frames.push({ transform: at(endY - 8) }, { transform: at(endY) });
+  slip.style.transform = at(endY);
+  return slip.animate(stepped(frames), { duration: 560 }).finished;
+}
+
+function particles(x, y, color, count, spread) {
+  if (reduceMotion) return;
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement("div");
+    d.className = "dust";
+    d.style.background = `var(${color})`;
+    stage.appendChild(d);
+    const dir = i % 2 ? 1 : -1, lift = rand(0.4, 1.2), reach = rand(0.6, 1.4) * spread;
+    const at = k => `translate(${snap(x + dir * reach * k / 3) - 4}px, ${snap(y - lift * 24 * k + 6 * k * k) - 4}px)`;
+    d.animate(stepped([0, 1, 2, 3].map(k => ({ transform: at(k), opacity: k === 3 ? 0 : 1 }))),
+      { duration: 300 + i * 15 }).finished.then(() => d.remove());
+  }
+}
+
+function popText(kind) {
+  if (reduceMotion) return;
+  const p = document.createElement("div");
+  p.className = `pop ${kind}`;
+  p.textContent = POP_TEXT[kind];
+  stage.appendChild(p);
+  const x = snap(stage.clientWidth / 2 + SPRITE_W / 2 - CELL + (kind === "miss" ? 16 : 0));
+  const y0 = acornTop() + 8;
+  const at = k => `translate(${x}px, ${y0 - k * 8}px)`;
+  p.animate(stepped([0, 1, 2, 3, 4].map(k => ({ transform: at(k), opacity: k === 4 ? 0 : 1 }))),
+    { duration: 640 }).finished.then(() => p.remove());
+}
+
+// 프레임마다 그림 한 장을 잠깐씩 보여 주고 지운다.
+function flipbook(svgs, frameMs) {
+  svgs.forEach((s, i) => {
+    s.classList.add("pop");
+    s.style.visibility = "hidden";
+    stage.appendChild(s);
+    s.animate([{ visibility: "visible" }, { visibility: "visible" }], { delay: i * frameMs, duration: frameMs })
+      .finished.then(() => s.remove());
+  });
+}
+
+function burst(kind, cx, cy) {
+  if (reduceMotion) return;
+  const { dirs, core, frames } = BURST[kind];
+  const u = Math.max(PX, Math.round(CELL * 0.75));
+  const o = Math.max(2, Math.round(u / 3));
+  const reach = (frames.at(-1)[0] + frames.at(-1)[1] + 1) * u + o;
+  const svgs = frames.map(([gap, len], k) => {
+    const svg = svgEl(2 * reach, 2 * reach);
+    svg.style.overflow = "visible";
+    svg.style.transform = `translate(${Math.round(cx - reach)}px, ${Math.round(cy - reach)}px)`;
+    const cells = [];
+    if (k === 0) for (let y = 0; y < core; y++) for (let x = 0; x < core; x++)
+      if ((x !== 0 && x !== core - 1) || (y !== 0 && y !== core - 1) || core < 3) cells.push([x - (core - 1) / 2, y - (core - 1) / 2, "--slip-paper"]);
+    dirs.forEach(([dx, dy]) => {
+      // 대각선은 짧게 그려야 가로세로 빛살과 길이가 비슷해 보인다.
+      const n = dx && dy ? Math.ceil(len * 0.7) : len;
+      for (let i = 0; i < n; i++) cells.push([dx * (gap + i), dy * (gap + i), i === n - 1 ? "--acorn-light" : "--acorn-hi"]);
+    });
+    const at = v => reach + v * u - u / 2;
+    cells.forEach(([x, y]) => addRect(svg, at(x) - o, at(y) - o, u + 2 * o, u + 2 * o, "var(--outline)"));
+    cells.forEach(([x, y, c]) => addRect(svg, at(x), at(y), u, u, `var(${c})`));
+    return svg;
+  });
+  flipbook(svgs, BURST_FRAME_MS);
+}
+
+// 헛손질은 빛살 대신 도토리 옆을 스치고 지나가는 바람 자국을 남긴다.
+function whiff() {
+  if (reduceMotion) return;
+  const u = Math.max(PX, Math.round(CELL * 0.75));
+  const cx = acornLeft() + SPRITE_W / 2, cy = acornTop() + 4 * CELL, r = SPRITE_W * 0.75;
+  const points = Array.from({ length: 16 }, (_, i) => {
+    const a = -Math.PI * 0.9 + i * Math.PI * 0.06;
+    return [snap(cx + Math.cos(a) * r, u), snap(cy + Math.sin(a) * r * 0.6, u)];
+  });
+  const svgs = [0, 3, 6, 9].map(k => {
+    const svg = svgEl(stage.clientWidth, stage.clientHeight);
+    points.slice(k, k + 7).forEach(([x, y]) => addRect(svg, x, y, u, u, "var(--ink-soft)"));
+    return svg;
+  });
+  flipbook(svgs, 60);
+}
+
+function impact(kind) {
+  if (kind === "miss") return whiff();
+  const x = acornLeft() + (crackX(12) + 0.5) * CELL, y = acornTop() + 12 * CELL;
+  const big = kind === "perfect";
+  burst(kind, x, y);
+  particles(x, y, "--acorn-dark", big ? 5 : 2, 48);
+  particles(x, y, "--acorn-hi", big ? 5 : 2, 64);
+  if (big && !reduceMotion) {
+    wholeSvg.animate(stepped([{ filter: "brightness(1.7)" }, { filter: "none" }]), { duration: 110 });
+    quake(PX);
+  }
+}
+
+function quake(d) {
+  if (reduceMotion) return;
+  const t = (x, y) => ({ transform: `translate(${x}px, ${y}px)` });
+  stage.animate(stepped([t(0, d), t(0, -d), t(d, 0), t(0, 0)]), { duration: 180 });
+}
+
+// 마지막 타격 뒤 금 사이로 빛이 새어 나오다가 쪼개진다.
+async function crackGlow() {
+  if (reduceMotion) return;
+  const [from, to] = CRACK_ROWS.at(-1);
+  for (let k = 1; k <= 3; k++) {
+    crackSvg.replaceChildren();
+    for (let y = from; y <= to; y++) {
+      const x = crackX(y), beam = (y + k) % 3 === 0 ? k : 0;
+      addRect(crackSvg, (x - beam) * CELL, y * CELL, (1 + 2 * beam) * CELL, CELL, "var(--acorn-hi)");
+    }
+    const j = k % 2 ? -1 : 1;
+    acorn.style.transform = `translate(${acornLeft() + j * Math.round(CELL / 2)}px, ${acornTop()}px)`;
+    await wait(110);
+  }
+  layoutAcorn();
+}
+
+function shake(kind) {
+  if (reduceMotion) return Promise.resolve();
+  const base = `translate(${acornLeft()}px, ${acornTop()}px)`;
+  const off = (dx, dy) => `translate(${acornLeft() + dx}px, ${acornTop() + dy}px)`;
+  const frames = kind === "miss"
+    ? [base, off(0, -CELL), off(0, -2 * CELL), off(0, -CELL), base]
+    : [base, off(-CELL, 0), off(CELL, 0), off(-CELL, 0), off(CELL, 0), base];
+  return acorn.animate(stepped(frames.map(transform => ({ transform }))), { duration: kind === "miss" ? 260 : 300 }).finished;
+}
+
+async function split() {
+  await crackGlow();
+  wholeSvg.style.display = crackSvg.style.display = "none";
+  leftSvg.style.display = rightSvg.style.display = "";
+  setShadows([]);
+  const mid = stage.clientWidth / 2;
+  burst("final", mid, acornTop() + 12 * CELL);
+  quake(2 * PX);
+  particles(mid, acornTop() + 12 * CELL, "--acorn-inner", 8, 10 * CELL);
+  particles(mid, acornTop() + 4 * CELL, "--cap", 6, 8 * CELL);
+  const slipDone = placeSlip(false);
+  if (!reduceMotion) {
+    const path = side => {
+      const c = (sx, sy) => `translate(${side * sx * CELL}px, ${sy * CELL}px)`;
+      return [
+        "none",
+        c(1, -1),
+        c(3, -2),
+        `${c(6, -1)} rotate(${side * 45}deg)`,
+        `${c(SPLIT_DX - 1, 4)} rotate(${side * 90}deg)`,
+        splitFinal(side),
+      ].map(transform => ({ transform }));
+    };
+    await Promise.all([
+      leftSvg.animate(stepped(path(-1)), { duration: 480 }).finished,
+      rightSvg.animate(stepped(path(1)), { duration: 480 }).finished,
+    ]);
+  }
+  showSplitAcorn();
+  const [, dx] = lyingShadow();
+  particles(mid - dx, baseY(), "--dust", 4, 40);
+  particles(mid + dx, baseY(), "--dust", 4, 40);
+  await slipDone;
+}
+
+/* ---------- 게이지 ---------- */
+
+const gauge = {
+  pos: 0, dir: 1, speed: 0, zone: 0.5, zoneDir: 1, scale: 1, mode: "steady", t: 0, last: 0, paused: false,
+  cursor: gaugeEl.querySelector(".cursor"),
+  good: gaugeEl.querySelector(".good"),
+  perfect: gaugeEl.querySelector(".perfect"),
+  half(kind) { return ZONE[kind] * this.scale / 2; },
+  newZone(first) {
+    const twists = Object.keys(GAUGE_MODES).filter(m => m !== "steady");
+    const mercy = misses >= MERCY_FROM;
+    this.mode = !first && !mercy && Math.random() < TWIST_CHANCE ? pick(twists) : "steady";
+    const widen = mercy ? Math.min(MERCY_ZONE_MAX, 1 + MERCY_ZONE_STEP * (misses - MERCY_FROM + 1)) : 1;
+    this.scale = acornType.zone * widen * (this.mode === "narrow" ? NARROW_SCALE : 1);
+    this.zone = rand(this.half("good") + 0.05, 1 - this.half("good") - 0.05);
+    this.zoneDir = Math.random() < 0.5 ? 1 : -1;
+    this.placeZone();
+    const hint = document.getElementById("gauge-hint");
+    hint.textContent = mercy ? "칸을 넓게 해 둘게요" : GAUGE_MODES[this.mode] || `오늘은 ${acornType.name}예요`;
+    hint.classList.toggle("twist", mercy || this.mode !== "steady");
+  },
+  placeZone() {
+    const pct = v => `${snap(v * 100, 1)}%`;
+    this.good.style.left = pct(this.zone - this.half("good"));
+    this.good.style.width = pct(2 * this.half("good"));
+    this.perfect.style.left = pct(this.zone - this.half("perfect"));
+    this.perfect.style.width = pct(2 * this.half("perfect"));
+  },
+  judge() {
+    const d = Math.abs(this.pos - this.zone);
+    if (d <= this.half("perfect")) return "perfect";
+    if (d <= this.half("good")) return "good";
+    return "miss";
+  },
+  tick(now) {
+    const dt = Math.min(0.05, (now - (this.last || now)) / 1000);
+    this.last = now;
+    if (!this.paused) {
+      this.t += dt;
+      const speed = this.mode === "wobble" ? this.speed * (1 + WOBBLE * Math.sin(this.t * 5)) : this.speed;
+      if (this.mode === "flip" && Math.random() < FLIP_PER_SEC * dt) this.dir *= -1;
+      if (this.mode === "drift") {
+        const edge = this.half("good") + 0.02;
+        this.zone += this.zoneDir * DRIFT_SPEED * dt;
+        if (this.zone < edge || this.zone > 1 - edge) { this.zoneDir *= -1; this.zone = Math.min(1 - edge, Math.max(edge, this.zone)); }
+        this.placeZone();
+      }
+      this.pos += this.dir * speed * dt;
+      if (this.pos > 1) { this.pos = 1; this.dir = -1; }
+      if (this.pos < 0) { this.pos = 0; this.dir = 1; }
+      const track = gaugeEl.clientWidth - this.cursor.offsetWidth;
+      this.cursor.style.transform = `translateX(${snap(this.pos * track)}px)`;
+    }
+    if (!today) requestAnimationFrame(t => this.tick(t));
+  },
+};
+
+/* ---------- 하루 한 번 ---------- */
+
+const STORE_KEY = "acorn-fortune";
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+// 저장소가 막힌 환경(시크릿 창 등)에서는 저장 없이 그냥 깬다.
+function loadToday() {
+  try {
+    if (location.hash === "#reset") localStorage.removeItem(STORE_KEY);
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY));
+    return saved?.date === todayKey() && Number.isInteger(saved.fortune) ? saved : null;
+  } catch { return null; }
+}
+
+function saveToday(record) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(record)); } catch {}
+}
+
+function lockButton() {
+  rollBtn.disabled = true;
+  rollBtn.textContent = "내일 다시 깰 수 있어요";
+  gaugeEl.hidden = true;
+}
+
+async function hit() {
+  if (busy || today) return;
+  busy = true;
+  taps++;
+  gauge.paused = true;
+  const kind = gauge.judge();
+  hp = Math.min(acornType.hp, hp + DAMAGE[kind]);
+  popText(kind);
+  impact(kind);
+  drawCrack(crackLevel());
+  await shake(kind);
+  if (kind === "miss") {
+    particles(acornLeft() + 3 * CELL, baseY(), "--dust", 2, 24);
+    particles(acornLeft() + SPRITE_W - 3 * CELL, baseY(), "--dust", 2, 24);
+  }
+
+  if (hp >= acornType.hp) {
+    today = { date: todayKey(), fortune: pickIndex(FORTUNES), lucky: pick(LUCKY), careful: pick(CAREFUL), taps, type: acornType.id };
+    saveToday(today);
+    lockButton();
+    fillSlip();
+    await split();
+    showResult(today);
+    relayout();
+  } else {
+    await wait(reduceMotion ? 0 : 200);
+    if (kind === "miss") misses++;
+    if (misses < MERCY_FROM) gauge.speed = Math.min(GAUGE_SPEED_MAX, gauge.speed + GAUGE_SPEEDUP);
+    else if (kind === "miss") gauge.speed = Math.max(acornType.speed * MERCY_SLOW, gauge.speed - GAUGE_SPEEDUP);
+    gauge.newZone(false);
+    gauge.paused = false;
+  }
+  busy = false;
+}
+
+const verticalText = str => [...str].join("\n");
+
+function sealSvg() {
+  const svg = svgEl(SEAL[0].length, SEAL.length, "strip-seal");
+  svg.setAttribute("viewBox", `0 0 ${SEAL[0].length} ${SEAL.length}`);
+  SEAL.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === "R") addRect(svg, x, y, 1, 1, "var(--seal)"); }));
+  return svg;
+}
+
+function fillSlip() {
+  slip.innerHTML = '<div class="strip-head"></div><div class="strip-grade"></div>';
+  slip.lastChild.textContent = verticalText(FORTUNES[today.fortune][0]);
+  slip.append(sealSvg());
+}
+document.querySelector(".result .strip").append(sealSvg());
+
+// 모두 딱! 으로 깼을 때의 횟수를 기준으로 솜씨를 매긴다.
+function skillLabel(n) {
+  const best = Math.ceil(acornType.hp / DAMAGE.perfect);
+  if (n <= best) return "다람쥐급";
+  if (n <= best + 2) return "솜씨꾼";
+  return "끈기왕";
+}
+
+function showResult({ fortune, lucky, careful, taps }) {
+  const [grade, title, body] = FORTUNES[fortune];
+  document.getElementById("result-date").textContent = dateLabel(today.date);
+  document.getElementById("result-type").textContent = acornType.name;
+  document.getElementById("grade").textContent = verticalText(grade);
+  document.getElementById("title").textContent = title;
+  document.getElementById("body").textContent = body;
+  document.getElementById("skill").textContent = `${taps}번, ${skillLabel(taps)}`;
+  document.getElementById("lucky").textContent = lucky;
+  document.getElementById("careful").textContent = careful;
+  document.body.classList.add("done");
+  document.getElementById("result").hidden = false;
+  document.getElementById("actions").hidden = false;
+  setupShare();
+}
+
+function showToday() {
+  lockButton();
+  fillSlip();
+  showResult(today);
+  relayout();
+}
+
+// 깬 뒤에는 무대 높이가 바뀌므로 칸 크기와 장면을 다시 잡는다.
+function relayout() {
+  sizeAcorn();
+  drawScene();
+  if (today) { showSplitAcorn(); placeSlip(true); } else resetAcorn();
+}
+
+// 탭 아이콘도 같은 스프라이트로 그린다. data URI 안에서는 CSS 변수가 안 먹어 실제 색값을 꺼내 넣는다.
+function setFavicon() {
+  const css = getComputedStyle(document.documentElement);
+  const pad = (GRID_H - GRID_W) / 2;
+  let rects = "";
+  WHOLE.forEach((row, y) => row.forEach((c, x) => {
+    if (c) rects += `<rect x="${x + pad}" y="${y}" width="1" height="1" fill="${css.getPropertyValue(COLORS[c]).trim()}"/>`;
+  }));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${GRID_H} ${GRID_H}" shape-rendering="crispEdges">${rects}</svg>`;
+  const link = document.createElement("link");
+  link.rel = "icon";
+  link.type = "image/svg+xml";
+  link.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  document.head.appendChild(link);
+}
+
+/* ---------- 이미지 저장 ---------- */
+
+const CARD = { W: 1080, PAD: 72, CELL: 14, U: 8, BORDER: 6 };
+const HALF_LEFT = halfGrid(WHOLE, true), HALF_RIGHT = halfGrid(WHOLE, false);
+const $ = id => document.getElementById(id);
+
+function wrapLines(g, text, maxW) {
+  const lines = [];
+  let line = "";
+  text.split(" ").forEach(word => {
+    const next = line ? `${line} ${word}` : word;
+    if (line && g.measureText(next).width > maxW) { lines.push(line); line = word; }
+    else line = next;
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function dateLabel(key) {
+  const [y, m, d] = key.split("-");
+  return `${y}년 ${m}월 ${d}일`;
+}
+
+// 화면과 같은 스프라이트·색으로 오늘의 장면과 점괘를 그린다. 높이는 내용에 맞춰 잘라 낸다.
+// 이미지 카드의 쪽지 치수. 화면 쪽지처럼 테두리 바깥 여백·선, 머리, 등급, 도장 순으로 쌓는다.
+const stripFrame = w => (w > 150 ? 2 : 1) * CARD.BORDER;
+const sealSize = w => Math.floor(w * 0.5 / SEAL.length) * SEAL.length;
+const stripHeight = (w, headH, n, lineH, pad) =>
+  2 * (stripFrame(w) + CARD.BORDER) + (headH ? headH + CARD.BORDER : 0) + pad + n * lineH + pad / 2 + sealSize(w) + pad;
+
+async function renderCard() {
+  await Promise.all(["168px Galmuri14", "66px Galmuri11", "36px Galmuri9"].map(f => document.fonts.load(f)));
+  // 도토리 종류별 몸통 색이 .acorn 에 걸려 있어 거기서 읽는다.
+  const css = getComputedStyle(acorn);
+  const v = name => css.getPropertyValue(name).trim();
+  const { W, PAD, CELL: c, U, BORDER: B } = CARD;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = 2400;
+  const g = cv.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = v("--bg"); g.fillRect(0, 0, W, cv.height);
+
+  const text = (str, x, y, font, color, align = "left") => {
+    g.font = font; g.fillStyle = color; g.textAlign = align; g.textBaseline = "top";
+    g.fillText(str, x, y);
+  };
+  const pixelBox = (x, y, w, h, fill, border, drop) => {
+    if (drop) {
+      g.fillStyle = drop;
+      g.fillRect(x + B, y + 2 * B, w, h); g.fillRect(x + 2 * B, y + B, w, h);
+    }
+    g.fillStyle = border;
+    g.fillRect(x, y - B, w, h + 2 * B); g.fillRect(x - B, y, w + 2 * B, h);
+    g.fillStyle = fill; g.fillRect(x, y, w, h);
+  };
+  // 화면의 .strip 과 같은 쪽지. 찢은 자국까지 포함한 높이를 돌려준다.
+  const drawStrip = (x, y, w, headH, head, grade, font, lineH, pad) => {
+    const chars = [...grade], T = B, F = stripFrame(w), S = sealSize(w);
+    const h = stripHeight(w, headH, chars.length, lineH, pad);
+    g.fillStyle = v("--outline"); g.fillRect(x - B, y - B, w + 2 * B, h + B);
+    g.fillStyle = v("--slip-line"); g.fillRect(x + F, y + F, w - 2 * F, h - 2 * F);
+    g.fillStyle = v("--slip-paper"); g.fillRect(x, y, w, F); g.fillRect(x, y + h - F, w, F);
+    g.fillRect(x, y, F, h); g.fillRect(x + w - F, y, F, h);
+    g.fillRect(x + F + B, y + F + B, w - 2 * F - 2 * B, h - 2 * F - 2 * B);
+    const right = x + w + B;
+    for (let tx = x - B; tx < right; tx += 4 * T) {
+      g.fillStyle = v("--outline");
+      g.fillRect(tx, y + h, Math.min(2 * T, right - tx), T);
+      if (tx + 2 * T < right) g.fillRect(tx + 2 * T, y + h + T, Math.min(2 * T, right - tx - 2 * T), T);
+      g.fillStyle = v("--slip-paper");
+      if (tx + 2 * T < x + w) g.fillRect(tx + 2 * T, y + h, Math.min(2 * T, x + w - tx - 2 * T), T);
+    }
+    let cy = y + F + B;
+    if (head) {
+      text(head, x + w / 2, cy + (headH - 36) / 2, "36px Galmuri9", v("--slip-line"), "center");
+      g.fillStyle = v("--slip-line"); g.fillRect(x + F + B, cy + headH, w - 2 * F - 2 * B, B);
+      cy += headH + B;
+    }
+    cy += pad;
+    chars.forEach((ch, i) => text(ch, x + w / 2, cy + i * lineH, font, v("--slip-ink"), "center"));
+    cy += chars.length * lineH + pad / 2;
+    const u = S / SEAL.length, sx = x + (w - S) / 2;
+    g.fillStyle = v("--seal");
+    SEAL.forEach((row, ry) => [...row].forEach((ch, rx) => { if (ch === "R") g.fillRect(sx + rx * u, cy + ry * u, u, u); }));
+    return h + 2 * T;
+  };
+  const drawGrid = (grid, ox, oy) => grid.forEach((row, y) => row.forEach((k, x) => {
+    if (!k) return;
+    g.fillStyle = v(COLORS[k]); g.fillRect(ox + x * c, oy + y * c, c, c);
+  }));
+
+  let y = PAD;
+  text("도토리 점괘", W / 2 + 8, y + 8, "112px Galmuri14", v("--outline"), "center");
+  text("도토리 점괘", W / 2, y, "112px Galmuri14", v("--acorn"), "center");
+  y += 150;
+  text(`${dateLabel(today.date)} · ${acornType.name}`, W / 2, y, "44px Galmuri11", v("--ink-soft"), "center");
+  y += 100;
+
+  // 쪽지, 그 아래 쪼개진 반쪽, 바닥 순서로 쌓는다.
+  const [grade, title, body] = FORTUNES[today.fortune];
+  const SLIP_W = 112;
+  const slipH = drawStrip(W / 2 - SLIP_W / 2, y, SLIP_W, 0, "", grade, "66px Galmuri11", 78, 14);
+  const base = y + slipH + 24 + 11 * c;
+
+  const cols = Math.floor((W - 2 * PAD) / U), rows = 12, gx = (W - cols * U) / 2, gy = base - 3 * U;
+  for (let r = 0; r < rows; r++) {
+    const dy = (r + 0.5) / rows * 2 - 1;
+    const half = Math.round(cols / 2 * Math.sqrt(1 - dy * dy));
+    const x0 = gx + (cols / 2 - half) * U;
+    g.fillStyle = v("--ground-edge"); g.fillRect(x0 - U, gy + r * U, (half * 2 + 2) * U, U);
+    g.fillStyle = v(r < 3 ? "--ground-light" : r < 8 ? "--ground" : "--ground-dark");
+    g.fillRect(x0, gy + r * U, half * 2 * U, U);
+  }
+
+  const L = W / 2 - GRID_W / 2 * c, T = base - 23 * c, PY = T + (PIVOT_Y + SPLIT_DY) * c;
+  g.save(); g.translate(L + (PIVOT_L - SPLIT_DX) * c, PY); g.rotate(-Math.PI / 2); drawGrid(HALF_LEFT, -PIVOT_L * c, -PIVOT_Y * c); g.restore();
+  g.save(); g.translate(L + (PIVOT_R + SPLIT_DX) * c, PY); g.rotate(Math.PI / 2); drawGrid(HALF_RIGHT, -PIVOT_R * c, -PIVOT_Y * c); g.restore();
+  y = gy + rows * U + 72;
+
+  // 점괘 카드는 화면과 같이 왼쪽에 쪽지, 오른쪽에 날짜·제목·본문을 두고 아래에 세 가지 정보를 적는다.
+  // 줄을 먼저 나눠 높이를 잰 뒤 상자를 그린다.
+  const IN = 56, STRIP_W = 208, GAP = 48, LH = 60, LABEL_W = 250;
+  const left = PAD + IN, textX = left + STRIP_W + GAP, textW = W - PAD - IN - textX, inner = W - 2 * (PAD + IN);
+  g.font = "66px Galmuri11";
+  const titleLines = wrapLines(g, title, textW);
+  g.font = "36px Galmuri9";
+  const bodyLines = wrapLines(g, body, textW);
+  const facts = [["깬 솜씨", `${today.taps}번, ${skillLabel(today.taps)}`], ["오늘의 행운", today.lucky], ["살펴볼 것", today.careful]];
+  const factLines = facts.map(([, val]) => wrapLines(g, val, inner - LABEL_W));
+  const stripH = stripHeight(STRIP_W, 72, [...grade].length, 184, 32) + 2 * B;
+  const textH = LH + 16 + titleLines.length * 84 + 16 + bodyLines.length * LH;
+  const topH = Math.max(stripH, textH);
+  const cardH = IN + topH + 48 + B + 40 + factLines.reduce((n, l) => n + l.length, 0) * LH + IN;
+  pixelBox(PAD, y, W - 2 * PAD, cardH, v("--paper"), v("--border"), v("--drop"));
+
+  let cy = y + IN;
+  drawStrip(left, cy, STRIP_W, 72, "점괘", grade, "168px Galmuri14", 184, 32);
+  let ty = cy;
+  text(dateLabel(today.date), textX, ty, "36px Galmuri9", v("--ink-soft")); ty += LH + 16;
+  titleLines.forEach(l => { text(l, textX, ty, "66px Galmuri11", v("--ink")); ty += 84; });
+  ty += 16;
+  bodyLines.forEach(l => { text(l, textX, ty, "36px Galmuri9", v("--ink")); ty += LH; });
+  cy += topH + 48;
+  g.fillStyle = v("--ink-soft");
+  for (let x = left; x < left + inner; x += 2 * B) g.fillRect(x, cy, B, B);
+  cy += B + 40;
+  facts.forEach(([label], i) => {
+    text(label, left, cy, "36px Galmuri9", v("--ink-soft"));
+    factLines[i].forEach(l => { text(l, left + LABEL_W, cy, "36px Galmuri9", v("--ink")); cy += LH; });
+  });
+
+  y += cardH + 56;
+  const footer = isPublic() ? `${location.host}${location.pathname}` : "도토리 점괘";
+  text(footer, W / 2, y, "36px Galmuri9", v("--ink-soft"), "center");
+  y += 36 + PAD;
+
+  const out = document.createElement("canvas");
+  out.width = W; out.height = y;
+  out.getContext("2d").drawImage(cv, 0, 0);
+  return out;
+}
+
+const cardBlob = async () => new Promise(r => renderCard().then(cv => cv.toBlob(r, "image/png")));
+const cardFileName = () => `도토리점괘-${today.date}.png`;
+
+async function saveImage() {
+  const blob = await cardBlob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = cardFileName();
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  shareNote("이미지를 저장했어요.");
+}
+
+/* ---------- 링크 공유 ---------- */
+
+const isPublic = () => /^https?:$/.test(location.protocol);
+const shareUrl = () => `${location.origin}${location.pathname}`;
+const shareText = () => `오늘 도토리 점괘는 '${FORTUNES[today.fortune][0]}', ${today.taps}번 만에 깼어요. 내 점괘도 깨 보세요.`;
+const shareNote = msg => { $("share-note").textContent = msg; };
+
+// 파일로 열었을 때는 받는 사람이 열 주소가 없어 링크 공유 버튼을 숨긴다.
+function setupShare() {
+  if (!isPublic()) return;
+  const enc = encodeURIComponent;
+  $("share-x").href = `https://twitter.com/intent/tweet?text=${enc(shareText())}&url=${enc(shareUrl())}`;
+  $("share-fb").href = `https://www.facebook.com/sharer/sharer.php?u=${enc(shareUrl())}`;
+  // 기본 공유 창이 있으면 X·페이스북은 그 안에 들어 있어 따로 두지 않는다.
+  const native = !!navigator.share;
+  $("copy-link").hidden = false;
+  $("share-native").hidden = !native;
+  [$("share-x"), $("share-fb")].forEach(el => { el.hidden = native; });
+}
+
+/* ---------- 카카오톡 공유 ---------- */
+
+// developers.kakao.com 앱의 JavaScript 키. 앱에 등록한 사이트 도메인에서만 동작하므로 소스에 둬도 된다.
+const KAKAO_JS_KEY = "";
+const KAKAO_SDK = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js";
+let kakaoReady;
+$("share-kakao").hidden = !KAKAO_JS_KEY;
+
+function loadKakao() {
+  kakaoReady ??= new Promise((resolve, reject) => {
+    const s = Object.assign(document.createElement("script"), { src: KAKAO_SDK, crossOrigin: "anonymous" });
+    s.onload = () => { if (!Kakao.isInitialized()) Kakao.init(KAKAO_JS_KEY); resolve(Kakao); };
+    s.onerror = () => { kakaoReady = null; reject(new Error("kakao sdk")); };
+    document.head.append(s);
+  });
+  return kakaoReady;
+}
+
+// 카카오 메시지에 넣을 그림은 공개 주소가 있어야 해서 카드 이미지를 카카오 서버에 먼저 올린다.
+async function kakaoShare() {
+  if (!isPublic()) {
+    shareNote("카카오톡 공유는 사이트를 인터넷에 올린 뒤에 켜져요. 지금은 이미지를 저장해서 보내 주세요.");
+    return;
+  }
+  if (!KAKAO_JS_KEY) {
+    if (navigator.share) return nativeShare();
+    shareNote("카카오톡 공유를 준비하고 있어요. 링크 복사로 보내 주세요.");
+    return;
+  }
+  try {
+    const K = await loadKakao();
+    const cv = await renderCard();
+    const file = new File([await new Promise(r => cv.toBlob(r, "image/png"))], cardFileName(), { type: "image/png" });
+    const up = await K.Share.uploadImage({ file: [file] });
+    const link = { mobileWebUrl: shareUrl(), webUrl: shareUrl() };
+    const [grade, title] = FORTUNES[today.fortune];
+    K.Share.sendDefault({
+      objectType: "feed",
+      content: {
+        title: `오늘의 도토리 점괘 '${grade}'`,
+        description: `${title}. ${today.taps}번 만에 깼어요.`,
+        imageUrl: up.infos.original.url,
+        imageWidth: cv.width,
+        imageHeight: cv.height,
+        link,
+      },
+      buttons: [{ title: "나도 깨 보기", link }],
+    });
+  } catch {
+    shareNote("카카오톡을 열지 못했어요. 링크 복사로 보내 주세요.");
+  }
+}
+
+async function copyLink() {
+  const url = shareUrl();
+  try { await navigator.clipboard.writeText(url); }
+  catch {
+    const t = Object.assign(document.createElement("textarea"), { value: url });
+    document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove();
+  }
+  shareNote("링크를 복사했어요.");
+}
+
+// 폰에서는 공유 시트가 떠서 카카오톡·메시지 같은 앱으로 바로 보낼 수 있다. 이미지를 받는 앱이면 이미지도 같이 간다.
+async function nativeShare() {
+  const data = { title: "도토리 점괘", text: shareText(), url: shareUrl() };
+  try {
+    const file = new File([await cardBlob()], cardFileName(), { type: "image/png" });
+    if (navigator.canShare?.({ files: [file] })) data.files = [file];
+    await navigator.share(data);
+  } catch (e) {
+    if (e.name !== "AbortError") shareNote("공유하지 못했어요. 링크 복사로 보내 주세요.");
+  }
+}
+
+$("save-img").addEventListener("click", saveImage);
+$("copy-link").addEventListener("click", copyLink);
+$("share-native").addEventListener("click", nativeShare);
+$("share-kakao").addEventListener("click", kakaoShare);
+
+rollBtn.addEventListener("click", hit);
+stage.addEventListener("click", hit);
+addEventListener("keydown", e => {
+  if (e.code === "Space" && e.target === document.body) { e.preventDefault(); hit(); }
+});
+/* ---------- 화면 배경 ---------- */
+
+const LEAF = ["..XX.", ".XXXX", "XXXX.", ".XX..", "X...."];
+const SPRIG = ["X.X.X", ".XXX.", "..X.."];
+const PEBBLES = ["XX..", "XX.X"];
+const BG_CELL = 2 * PX;
+// 무늬 하나가 차지하는 넓이(px²). 클수록 듬성하다.
+const BG_DECO_AREA = 140 * 140;
+const FALLING_LEAVES = 6;
+const LEAF_COLORS = ["--acorn-light", "--cap-light", "--ground-light"];
+
+// 창 크기가 바뀌어도 무늬 자리가 뒤섞이지 않게 고정된 씨앗으로 뽑는다.
+function seeded(seed) {
+  return () => {
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function drawSprite(svg, art, x, y, u, color, flip) {
+  art.forEach((row, ry) => [...row].forEach((ch, rx) => {
+    if (ch !== "X") return;
+    addRect(svg, x + (flip ? row.length - 1 - rx : rx) * u, y + ry * u, u, u, color);
+  }));
+}
+
+// 나무 꼭대기를 반원으로 겹쳐 숲 능선을 만든다. 열마다 가장 높은 값 하나만 그린다.
+function woodLine(svg, w, h, rnd, color, minR, maxR, lift) {
+  const cols = Math.ceil(w / BG_CELL), tops = new Array(cols).fill(0);
+  for (let c = -maxR; c < cols + maxR; c += Math.round((minR + rnd() * (maxR - minR)) * 0.9)) {
+    const r = Math.round(minR + rnd() * (maxR - minR));
+    for (let dx = -r; dx <= r; dx++) {
+      const col = c + dx;
+      if (col < 0 || col >= cols) continue;
+      tops[col] = Math.max(tops[col], Math.round(Math.sqrt(r * r - dx * dx)) + lift);
+    }
+  }
+  tops.forEach((t, col) => addRect(svg, col * BG_CELL, h - t * BG_CELL, BG_CELL, t * BG_CELL, color));
+}
+
+function drawBackdrop() {
+  document.querySelector(".backdrop")?.remove();
+  const w = innerWidth, h = innerHeight, rnd = seeded(20261019);
+  const layer = Object.assign(document.createElement("div"), { className: "backdrop" });
+  layer.setAttribute("aria-hidden", "true");
+  const svg = svgEl(w, h);
+
+  const decos = [LEAF, SPRIG, PEBBLES];
+  for (let i = 0, n = Math.round(w * h / BG_DECO_AREA); i < n; i++) {
+    const x = snap(rnd() * w, BG_CELL / 2), y = snap(rnd() * h * 0.85, BG_CELL / 2);
+    drawSprite(svg, decos[i % decos.length], x, y, PX, "var(--bg-deco)", rnd() < 0.5);
+  }
+  woodLine(svg, w, h, rnd, "var(--wood-far)", 6, 12, 8);
+  woodLine(svg, w, h, rnd, "var(--wood-near)", 4, 9, 3);
+  layer.append(svg);
+
+  if (!reduceMotion) {
+    for (let i = 0; i < FALLING_LEAVES; i++) {
+      const leaf = svgEl(LEAF[0].length * PX, LEAF.length * PX);
+      drawSprite(leaf, LEAF, 0, 0, PX, `var(${LEAF_COLORS[i % LEAF_COLORS.length]})`, i % 2);
+      leaf.style.left = `${snap((i + 0.5) / FALLING_LEAVES * w + rand(-40, 40))}px`;
+      layer.append(leaf);
+      const sway = rand(30, 70) * (i % 2 ? 1 : -1);
+      leaf.animate([
+        { transform: `translate(0, -40px)` },
+        { transform: `translate(${sway}px, ${h * 0.35}px)` },
+        { transform: `translate(${-sway / 2}px, ${h * 0.7}px)` },
+        { transform: `translate(${sway / 2}px, ${h + 40}px)` },
+      ], { duration: rand(14000, 24000), delay: -rand(0, 24000), iterations: Infinity, easing: "steps(90, end)" });
+    }
+  }
+  document.body.prepend(layer);
+}
+
+let backdropSize = "";
+addEventListener("resize", () => requestAnimationFrame(() => {
+  const size = `${innerWidth}x${innerHeight}`;
+  if (size === backdropSize) return;
+  backdropSize = size;
+  drawBackdrop();
+}));
+
+// 글꼴이 늦게 들어오거나 창 크기가 바뀌면 무대 크기가 달라지므로 그때마다 다시 그린다.
+let stageSize = "";
+new ResizeObserver(() => requestAnimationFrame(() => {
+  const size = `${stage.clientWidth}x${stage.clientHeight}`;
+  if (busy || size === stageSize) return;
+  stageSize = size;
+  relayout();
+})).observe(stage);
+
+setFavicon();
+backdropSize = `${innerWidth}x${innerHeight}`;
+drawBackdrop();
+sizeAcorn();
+drawScene();
+today = loadToday();
+acornType = today ? ACORN_TYPES.find(t => t.id === today.type) ?? ACORN_TYPES[1] : pick(ACORN_TYPES);
+acorn.classList.add(acornType.id);
+if (today) showToday();
+else {
+  resetAcorn();
+  gauge.speed = acornType.speed;
+  gauge.newZone(true);
+  requestAnimationFrame(t => gauge.tick(t));
+}
+</script>
+</body>
+</html>
