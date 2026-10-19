@@ -1,9 +1,9 @@
 import base64, sys
 from playwright.sync_api import sync_playwright
 JS = r"""async () => {
-  await Promise.all(["104px Galmuri14", "66px Galmuri11", "34px Galmuri11"].map(f => document.fonts.load(f)));
+  await Promise.all(["88px Galmuri11", "104px Galmuri14", "66px Galmuri11", "34px Galmuri11"].map(f => document.fonts.load(f)));
   const css = getComputedStyle(acorn), v = n => css.getPropertyValue(n).trim();
-  const W = 1200, H = 630, c = 14, U = 8, B = 6;
+  const W = 1200, H = 630, c = 14, U = 8, B = 6, SCENE_LIFT = 34;
   const cv = Object.assign(document.createElement("canvas"), { width: W, height: H });
   const g = cv.getContext("2d"); g.imageSmoothingEnabled = false;
   const rnd = seeded(7);
@@ -28,6 +28,8 @@ JS = r"""async () => {
   ridge(v("--wood-far"), 6, 11, 9, 10);
   ridge(v("--wood-near"), 4, 8, 4, 10);
 
+  // 아래에 게이지를 둘 자리를 내려고 장면을 위로 올린다.
+  g.save(); g.translate(0, -SCENE_LIFT);
   // 바닥
   const cols = 96, rows = 10, gx = (W - cols * U) / 2, gy = 470, ggy = 498;
   for (let r = 0; r < rows; r++) {
@@ -36,11 +38,22 @@ JS = r"""async () => {
     rect(x0, ggy + r * U, half * 2 * U, U, v(r < 2 ? "--ground-light" : r < 6 ? "--ground" : "--ground-dark"));
   }
 
-  // 빛살: 쪽지 가운데에서 여덟 방향으로 끊어지는 도트 줄
-  const cx = W / 2, cy = 330, u = 10;
-  [[1,0],[-1,0],[0,-1],[1,-1],[-1,-1],[1,1],[-1,1]].forEach(([dx, dy]) => {
-    for (let s = 8; s < 17; s++) { if (s % 4 === 3) continue; rect(cx + dx * s * u - u / 2, cy + dy * s * u - u / 2, u, u, v("--sky-deco")); }
-  });
+  // 게임의 BURST 와 같은 모양으로, 한 프레임을 골라 멈춘 그림으로 찍는다.
+  const gameBurst = (kind, frame, x0, y0, u) => {
+    const { dirs, core } = BURST[kind], [gap, len] = BURST[kind].frames[frame], o = Math.max(2, Math.round(u / 3));
+    const cells = [];
+    for (let y = 0; y < core; y++) for (let x = 0; x < core; x++)
+      if ((x !== 0 && x !== core - 1) || (y !== 0 && y !== core - 1) || core < 3) cells.push([x - (core - 1) / 2, y - (core - 1) / 2, "--slip-paper"]);
+    dirs.forEach(([dx, dy]) => {
+      const n = dx && dy ? Math.ceil(len * 0.7) : len;
+      for (let i = 0; i < n; i++) cells.push([dx * (gap + i), dy * (gap + i), i === n - 1 ? "--acorn-light" : "--acorn-hi"]);
+    });
+    const at = t => t * u - u / 2;
+    cells.forEach(([x, y]) => rect(x0 + at(x) - o, y0 + at(y) - o, u + 2 * o, u + 2 * o, v("--outline")));
+    cells.forEach(([x, y, col]) => rect(x0 + at(x), y0 + at(y), u, u, v(col)));
+  };
+  const cx = W / 2, cy = 330;
+  gameBurst("final", 2, cx, cy, 14);
 
   // 쪽지
   const SW = 120, F = stripFrame(SW), S = sealSize(SW), lineH = 80, pad = 22;
@@ -56,23 +69,81 @@ JS = r"""async () => {
   const su = S / SEAL.length, ssx = cx - S / 2;
   SEAL.forEach((row, ry) => [...row].forEach((ch, rx) => { if (ch === "R") rect(ssx + rx * su, ty + ry * su, su, su, v("--seal")); }));
 
-  // 쪼개진 반쪽: 쪽지 양옆에 눕힌다
+  // 쪼개진 반쪽: 맞은 순간 서로 다른 각도와 높이로 튕겨 나간다.
+  // 캔버스로 돌리면 도트가 번져서 칸 단위로 돌린 뒤 키운다.
+  const rotGrid = (grid, deg) => {
+    const h = grid.length, w = grid[0].length, a = deg * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+    const n = Math.ceil(Math.hypot(w, h)) + 2, out = [];
+    for (let y = 0; y < n; y++) { const row = []; for (let x = 0; x < n; x++) {
+      const dx = x + 0.5 - n / 2, dy = y + 0.5 - n / 2;
+      const sx = Math.floor(ca * dx + sa * dy + w / 2), sy = Math.floor(-sa * dx + ca * dy + h / 2);
+      row.push(sy >= 0 && sy < h && sx >= 0 && sx < w ? grid[sy][sx] : null);
+    } out.push(row); }
+    // 돌리면서 생긴 구멍을 메우고, 가장자리를 다시 테두리 색으로 칠해 윤곽을 잇는다.
+    const at = (x, y) => out[y]?.[x] ?? null, N4 = [[1,0],[-1,0],[0,1],[0,-1]];
+    const filled = out.map((row, y) => row.map((k, x) => k ?? (N4.filter(([dx, dy]) => at(x + dx, y + dy)).length >= 3 ? "O" : null)));
+    return filled.map((row, y) => row.map((k, x) => k && N4.some(([dx, dy]) => !(filled[y + dy]?.[x + dx])) ? "O" : k));
+  };
   const drawGrid = (grid, ox, oy) => grid.forEach((row, y) => row.forEach((k, x) => { if (k) rect(ox + x * c, oy + y * c, c, c, v(COLORS[k])); }));
-  const L = cx - GRID_W / 2 * c, PY = gy + 12 - (GRID_W / 2) * c + PIVOT_Y * c - 4 * c;
-  const SPREAD = 9;
-  g.save(); g.translate(L + (PIVOT_L - SPREAD) * c, gy + 2 * c); g.rotate(-Math.PI / 2); drawGrid(HALF_LEFT, -PIVOT_L * c, -PIVOT_Y * c); g.restore();
-  g.save(); g.translate(L + (PIVOT_R + SPREAD) * c, gy + 2 * c); g.rotate(Math.PI / 2); drawGrid(HALF_RIGHT, -PIVOT_R * c, -PIVOT_Y * c); g.restore();
+  const flying = (grid, deg, mx, my) => { const r = rotGrid(grid, deg); drawGrid(r, mx - r[0].length * c / 2, my - r.length * c / 2); };
+  // 바닥 그림자로 공중에 떠 있음을 보인다.
+  const shadowAt = (x, w) => rect(x - w / 2, ggy + 10, w, 12, v("--shadow"));
+  shadowAt(cx - 250, 150); shadowAt(cx + 255, 120);
+  flying(HALF_LEFT, -38, cx - 255, 330);
+  flying(HALF_RIGHT, 72, cx + 262, 340);
+  // 껍질 파편과 흩날리는 궤적
+  const SHARDS = [[-150, 230, "--acorn", 2], [-330, 220, "--cap", 2], [-120, 430, "--acorn-light", 1], [170, 250, "--acorn-dark", 2],
+    [350, 300, "--cap-dark", 2], [140, 450, "--acorn", 1], [-380, 380, "--acorn-dark", 1], [395, 440, "--acorn-light", 1]];
+  SHARDS.forEach(([dx, y, col, n]) => {
+    rect(cx + dx, y, n * 8, n * 8, v("--outline"));
+    rect(cx + dx + 2, y + 2, n * 8 - 4, n * 8 - 4, v(col));
+    const sx = dx < 0 ? 1 : -1;
+    for (let i = 1; i <= 3; i++) rect(cx + dx + sx * (n * 8 + i * 12), y + n * 4 - 2 + (i % 2) * 2, 6, 4, v("--sky-deco"));
+  });
 
   // 반짝이
   const SPARK = [".X.", "XXX", ".X."];
   [[cx - 190, 240], [cx + 180, 210], [cx - 120, 150], [cx + 230, 330], [cx - 250, 360]].forEach(([x, y]) => sprite(SPARK, x, y, 8, v("--acorn-hi")));
+  g.restore();
+
+  // 게이지: 커서가 진한 칸 한가운데에 꽂힌 순간
+  const GW = 480, GH = 32, gX = cx - GW / 2, gY = 556, HIT = 0.64;
+  rect(gX - B, gY, GW + 2 * B, GH, v("--outline")); rect(gX, gY - B, GW, GH + 2 * B, v("--outline"));
+  rect(gX + B, gY + GH + B, GW, B, v("--drop")); rect(gX + GW + B, gY + B, B, GH, v("--drop"));
+  rect(gX, gY, GW, GH, v("--paper"));
+  const zone = (r, col) => rect(Math.round(gX + (HIT - r / 2) * GW), gY, Math.round(r * GW), GH, col);
+  zone(ZONE.good, v("--ground-light")); zone(ZONE.perfect, v("--acorn"));
+  const curX = Math.round(gX + HIT * GW) - 5;
+  rect(curX, gY - 12, 10, GH + 24, v("--outline"));
+  gameBurst("perfect", 2, curX + 5, gY + GH / 2, 8);
+
   // 떨어지는 잎
-  [[110, 120, "--acorn-light"], [1050, 90, "--cap-light"], [210, 330, "--cap-light"], [990, 300, "--acorn-light"], [1110, 420, "--ground-light"]]
+  [[110, 120, "--acorn-light"], [1050, 90, "--cap-light"], [210, 330, "--cap-light"], [990, 300, "--acorn-light"], [160, 470, "--ground-light"]]
     .forEach(([x, y, col], i) => sprite(LEAF, x, y, 8, v(col), i % 2));
 
-  // 제목
-  text("도토리 점괘", cx + 7, 40 + 7, "104px Galmuri14", v("--outline"));
-  text("도토리 점괘", cx, 40, "104px Galmuri14", v("--acorn"));
+  // 제목: 원래 크기로 찍은 글자를 한 칸 두껍게 만든 뒤 정수 배로 키워 도트를 살린다.
+  const LOGO_FONT = "bold 11px Galmuri11";
+  await document.fonts.load(LOGO_FONT);
+  const logo = (str, cxp, top, k, font = LOGO_FONT) => {
+    const o = document.createElement("canvas"), og = o.getContext("2d");
+    og.font = font; og.letterSpacing = "1px";
+    const tw = Math.ceil(og.measureText(str).width) + 6, th = 17;
+    o.width = tw; o.height = th;
+    og.font = font; og.letterSpacing = "1px"; og.textBaseline = "top"; og.fillStyle = "#000"; og.fillText(str, 3, 3);
+    const a = og.getImageData(0, 0, tw, th).data, on = (x, y) => x >= 0 && y >= 0 && x < tw && y < th && a[(y * tw + x) * 4 + 3] > 110;
+    const fill = on;
+    const edge = (x, y) => !fill(x, y) && [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]].some(([dx, dy]) => fill(x + dx, y + dy));
+    const ox = Math.round(cxp - tw * k / 2);
+    const px = (x, y, col, d = 0) => rect(ox + (x + d) * k, top + (y + d) * k, k, k, col);
+    for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) if (fill(x, y) || edge(x, y)) px(x, y, v("--outline"), 1);
+    for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+      if (edge(x, y)) px(x, y, v("--outline"));
+      else if (fill(x, y)) px(x, y, v("--acorn"));
+    }
+  };
+  logo("도토리 점괘", cx, 4, 10);
+  // 11px 글꼴의 정수 배(66px)로 찍어야 도트가 번지지 않는다.
+
   return cv.toDataURL("image/png");
 }"""
 with sync_playwright() as p:
