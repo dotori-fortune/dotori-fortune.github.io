@@ -359,6 +359,52 @@
   .tool[hidden] { display: none; }
   .tool[aria-disabled="true"] { opacity: .45; pointer-events: none; }
   .share-note { margin: var(--gap-s) 0 0; color: var(--ink-soft); }
+  .tool.endless-go { background: var(--cap); color: var(--on-dark); }
+  .tool.endless-go:hover { background: var(--cap-light); }
+
+  /* 무한 도토리는 점괘 화면을 걷고 첫 화면처럼 무대와 게이지만 둔다. */
+  .endless .lead, .endless .legend, .endless .result, .endless #actions, .endless .share-note { display: none; }
+  .endless-hud { margin: 0; font-family: var(--font-mid); font-size: 20px; }
+  .endless-hud .lives { color: var(--seal); letter-spacing: 2px; }
+  .endless-hud[hidden], .endless-over[hidden], button.roll[hidden], .rank-form[hidden] { display: none; }
+  .endless-over {
+    width: min(480px, 100%);
+    margin: var(--gap-m) auto 0;
+    padding: var(--gap-l);
+    background: var(--paper);
+  }
+  .endless-over h2 { font-family: var(--font-mid); font-weight: 400; font-size: 26px; margin: 0 0 var(--gap-s); }
+  .endless-over h3 { font-weight: 400; color: var(--ink-soft); margin: var(--gap-l) 0 var(--gap-s); font-size: 18px; }
+  .endless-best { margin: 0; color: var(--ink-soft); }
+  .rank-form { display: flex; gap: var(--gap-m); justify-content: center; margin-top: var(--gap-m); }
+  .rank-form input {
+    font: inherit;
+    color: var(--ink);
+    background: var(--bg);
+    padding: 2px var(--gap-s);
+    margin: var(--px);
+    width: 9em;
+    min-width: 0;
+  }
+  .rank-list { list-style: none; margin: 0; padding: 0; text-align: left; }
+  .rank-list li {
+    display: grid;
+    grid-template-columns: 2.5em 1fr auto;
+    gap: var(--gap-s);
+    padding: 4px var(--gap-s);
+  }
+  .rank-list li + li { border-top: var(--px) dashed var(--ground-light); }
+  .rank-list li.me { background: var(--ground-light); }
+  .rank-list .no { color: var(--ink-soft); }
+  .rank-list li:nth-child(-n+3) .no { color: var(--acorn); }
+  .rank-list li.me .no { color: inherit; }
+  .rank-list .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank-note { margin: var(--gap-s) 0 0; color: var(--ink-soft); }
+  .endless-over .actions { margin-top: var(--gap-l); }
+  @media (max-width: 560px) {
+    .endless-over { padding: 12px var(--gap-m); }
+    .rank-form { gap: var(--gap-s); }
+  }
 
   .legend {
     margin: var(--gap-m) 0 0;
@@ -402,6 +448,7 @@
 <main>
   <h1>도토리 점괘</h1>
   <p class="lead">하루 한 번, 도토리를 깨서 속에 든 점괘를 꺼내요.</p>
+  <p class="endless-hud" id="endless-hud" hidden aria-live="polite"></p>
 
   <div class="stage" id="stage" aria-hidden="true"></div>
 
@@ -431,11 +478,29 @@
   </section>
 
   <div class="actions" id="actions" hidden>
+    <button class="tool endless-go pixel-box" id="endless-start" type="button">무한 도토리 깨기</button>
     <button class="tool kakao pixel-box" id="share-kakao" type="button" hidden>카카오톡 공유</button>
     <button class="tool pixel-box" id="save-img" type="button">이미지 저장</button>
     <button class="tool pixel-box" id="copy-link" type="button" hidden>링크 복사</button>
   </div>
   <p class="share-note" id="share-note" aria-live="polite"></p>
+
+  <section class="endless-over pixel-box" id="endless-over" hidden aria-live="polite">
+    <p class="result-date">오늘의 무한 도토리</p>
+    <h2 id="endless-score"></h2>
+    <p class="endless-best" id="endless-best"></p>
+    <form class="rank-form" id="rank-form">
+      <input class="pixel-box" id="rank-name" maxlength="8" placeholder="이름 (8자까지)" autocomplete="nickname" required>
+      <button class="tool pixel-box" type="submit">랭킹에 올리기</button>
+    </form>
+    <h3>오늘의 랭킹</h3>
+    <ol class="rank-list" id="rank-list"></ol>
+    <p class="rank-note" id="rank-note"></p>
+    <div class="actions">
+      <button class="tool endless-go pixel-box" id="endless-again" type="button">다시 깨기</button>
+      <button class="tool pixel-box" id="endless-exit" type="button">점괘로 돌아가기</button>
+    </div>
+  </section>
 
   <p class="legend">진한 칸을 맞히면 금이 크게 가요.</p>
 </main>
@@ -1005,15 +1070,19 @@ const gauge = {
   half(kind) { return ZONE[kind] * this.scale / 2; },
   newZone(first) {
     const twists = Object.keys(GAUGE_MODES).filter(m => m !== "steady");
-    const mercy = misses >= MERCY_FROM;
-    this.mode = !first && !mercy && Math.random() < TWIST_CHANCE ? pick(twists) : "steady";
+    const mercy = !endless && misses >= MERCY_FROM;
+    if (endless) this.mode = endlessMode(endless.count);
+    else this.mode = !first && !mercy && Math.random() < TWIST_CHANCE ? pick(twists) : "steady";
     const widen = mercy ? Math.min(MERCY_ZONE_MAX, 1 + MERCY_ZONE_STEP * (misses - MERCY_FROM + 1)) : 1;
     this.scale = acornType.zone * widen * (this.mode === "narrow" ? NARROW_SCALE : 1);
-    this.zone = rand(this.half("good") + 0.05, 1 - this.half("good") - 0.05);
-    this.zoneDir = Math.random() < 0.5 ? 1 : -1;
+    const r = endless ? endless.rnd : Math.random;
+    const edge = this.half("good") + 0.05;
+    this.zone = edge + r() * (1 - 2 * edge);
+    this.zoneDir = r() < 0.5 ? 1 : -1;
     this.placeZone();
     const hint = document.getElementById("gauge-hint");
-    hint.textContent = mercy ? "칸을 넓게 해 둘게요" : GAUGE_MODES[this.mode] || `오늘은 ${acornType.name}예요`;
+    const intro = endless ? `${endless.count + 1}번째 도토리` : `오늘은 ${acornType.name}예요`;
+    hint.textContent = mercy ? "칸을 넓게 해 둘게요" : GAUGE_MODES[this.mode] || intro;
     hint.classList.toggle("twist", mercy || this.mode !== "steady");
   },
   placeZone() {
@@ -1035,7 +1104,8 @@ const gauge = {
     if (!this.paused) {
       this.t += dt;
       const speed = this.mode === "wobble" ? this.speed * (1 + WOBBLE * Math.sin(this.t * 5)) : this.speed;
-      if (this.mode === "flip" && Math.random() < FLIP_PER_SEC * dt) this.dir *= -1;
+      const flip = endless ? this.t % ENDLESS_FLIP_EVERY < dt : Math.random() < FLIP_PER_SEC * dt;
+      if (this.mode === "flip" && flip) this.dir *= -1;
       if (this.mode === "drift") {
         const edge = this.half("good") + 0.02;
         this.zone += this.zoneDir * DRIFT_SPEED * dt;
@@ -1048,9 +1118,19 @@ const gauge = {
       const track = gaugeEl.clientWidth - this.cursor.offsetWidth;
       this.cursor.style.transform = `translateX(${snap(this.pos * track)}px)`;
     }
-    if (!today) requestAnimationFrame(t => this.tick(t));
+    if (playing()) requestAnimationFrame(t => this.tick(t));
+    else this.running = false;
+  },
+  // 이전 판의 루프가 아직 돌고 있으면 그대로 이어 쓴다. 두 개가 돌면 커서가 두 배로 빨라진다.
+  start() {
+    this.last = 0;
+    if (this.running) return;
+    this.running = true;
+    requestAnimationFrame(t => this.tick(t));
   },
 };
+
+const playing = () => !today || (endless && !endless.over);
 
 /* ---------- 하루 한 번 ---------- */
 
@@ -1081,7 +1161,7 @@ function lockButton() {
 }
 
 async function hit() {
-  if (busy || today) return;
+  if (busy || !playing()) return;
   busy = true;
   taps++;
   gauge.paused = true;
@@ -1094,6 +1174,11 @@ async function hit() {
   if (kind === "miss") {
     particles(acornLeft() + 3 * CELL, baseY(), "--dust", 2, 24);
     particles(acornLeft() + SPRITE_W - 3 * CELL, baseY(), "--dust", 2, 24);
+  }
+  if (endless) {
+    await endlessHit(kind);
+    busy = false;
+    return;
   }
 
   if (hp >= acornType.hp) {
@@ -1166,7 +1251,200 @@ function showToday() {
 function relayout() {
   sizeAcorn();
   drawScene();
-  if (today) { showSplitAcorn(); placeSlip(true); } else resetAcorn();
+  if (today && !endless) { showSplitAcorn(); placeSlip(true); } else resetAcorn();
+}
+
+/* ---------- 무한 도토리 ---------- */
+
+// 난이도는 깬 개수로만 오른다. 칸 위치만 오늘 날짜를 씨앗으로 뽑아 같은 날에는 모두 같은 판을 깬다.
+const ENDLESS = { lives: 3, hp: 4, speed: 0.9, speedStep: 0.06, speedMax: 2.2, zone: 1.15, zoneStep: 0.04, zoneMin: 0.6, twistFrom: 3 };
+const ENDLESS_TWISTS = ["wobble", "drift", "narrow", "flip"];
+const ENDLESS_FLIP_EVERY = 1.1;
+const ENDLESS_POP_MS = 420;
+const ENDLESS_KEY = "acorn-fortune-endless";
+const PLAYER_KEY = "acorn-fortune-player";
+let endless = null;
+
+const endlessMode = n => n < ENDLESS.twistFrom ? "steady" : ENDLESS_TWISTS[(n - ENDLESS.twistFrom) % ENDLESS_TWISTS.length];
+
+function endlessType(n) {
+  return {
+    id: ACORN_TYPES[n % ACORN_TYPES.length].id,
+    name: "무한 도토리",
+    hp: ENDLESS.hp,
+    zone: Math.max(ENDLESS.zoneMin, ENDLESS.zone - ENDLESS.zoneStep * n),
+    speed: Math.min(ENDLESS.speedMax, ENDLESS.speed + ENDLESS.speedStep * n),
+  };
+}
+
+const daySeed = key => [...key].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261);
+
+function setAcornType(type) {
+  acorn.classList.remove(acornType.id);
+  acornType = type;
+  acorn.classList.add(type.id);
+}
+
+function nextEndlessAcorn() {
+  setAcornType(endlessType(endless.count));
+  hp = 0;
+  gauge.speed = acornType.speed;
+}
+
+function renderHud() {
+  const hud = $("endless-hud");
+  const lives = document.createElement("span");
+  lives.className = "lives";
+  lives.textContent = "♥".repeat(endless.lives) + "♡".repeat(ENDLESS.lives - endless.lives);
+  hud.replaceChildren(lives, ` · 도토리 ${endless.count}개 · ${endless.score}점`);
+}
+
+function startEndless() {
+  endless = { rnd: seeded(daySeed(todayKey())), count: 0, score: 0, perfects: 0, taps: 0, lives: ENDLESS.lives, over: false, day: todayKey() };
+  document.body.classList.remove("done");
+  document.body.classList.add("endless");
+  $("endless-over").hidden = true;
+  $("endless-hud").hidden = false;
+  gaugeEl.hidden = rollBtn.hidden = rollBtn.disabled = false;
+  rollBtn.textContent = "두드리기";
+  nextEndlessAcorn();
+  relayout();
+  renderHud();
+  Object.assign(gauge, { pos: 0, dir: 1, t: 0, paused: false });
+  gauge.newZone(true);
+  gauge.start();
+  scrollTo({ top: 0 });
+}
+
+async function popAcorn() {
+  await crackGlow();
+  showSplitAcorn();
+  const mid = stage.clientWidth / 2;
+  burst("final", mid, acornTop() + 12 * CELL);
+  quake(2 * PX);
+  particles(mid, acornTop() + 12 * CELL, "--acorn-inner", 8, 10 * CELL);
+  particles(mid, acornTop() + 4 * CELL, "--cap", 6, 8 * CELL);
+  await wait(reduceMotion ? 0 : ENDLESS_POP_MS);
+}
+
+async function endlessHit(kind) {
+  endless.taps++;
+  endless.score += DAMAGE[kind];
+  if (kind === "perfect") endless.perfects++;
+  if (kind === "miss") endless.lives--;
+  if (hp >= acornType.hp) {
+    endless.count++;
+    await popAcorn();
+    nextEndlessAcorn();
+    resetAcorn();
+  } else await wait(reduceMotion ? 0 : 200);
+  renderHud();
+  if (endless.lives <= 0) return endEndless();
+  gauge.newZone(false);
+  gauge.paused = false;
+}
+
+function loadJson(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+function saveJson(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+function saveBest(score) {
+  const saved = loadJson(ENDLESS_KEY);
+  const best = saved?.date === endless.day ? Math.max(saved.best, score) : score;
+  saveJson(ENDLESS_KEY, { date: endless.day, best });
+  return best;
+}
+
+// 랭킹에서 내 줄을 찾으려고 기기마다 무작위 아이디를 하나 둔다.
+function player() {
+  const saved = loadJson(PLAYER_KEY);
+  if (saved?.id) return saved;
+  const fresh = { id: crypto.randomUUID(), name: "" };
+  saveJson(PLAYER_KEY, fresh);
+  return fresh;
+}
+
+function endEndless() {
+  endless.over = true;
+  gaugeEl.hidden = rollBtn.hidden = true;
+  const best = saveBest(endless.score);
+  $("endless-score").textContent = `도토리 ${endless.count}개, ${endless.score}점`;
+  $("endless-best").textContent = endless.score >= best ? "오늘 내 최고 기록이에요." : `오늘 내 최고 기록은 ${best}점이에요.`;
+  $("rank-form").hidden = endless.score === 0;
+  $("rank-form").querySelector("button").disabled = false;
+  $("rank-name").value = player().name;
+  $("endless-over").hidden = false;
+  refreshRanking();
+}
+
+function exitEndless() {
+  endless = null;
+  document.body.classList.remove("endless");
+  $("endless-over").hidden = $("endless-hud").hidden = true;
+  rollBtn.hidden = false;
+  setAcornType(ACORN_TYPES.find(t => t.id === today.type) ?? ACORN_TYPES[1]);
+  showToday();
+}
+
+/* ---------- 오늘의 랭킹 ---------- */
+
+const RANK_API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "http://127.0.0.1:8787" : "https://acorn-rank.studio54.workers.dev";
+
+function renderRanking({ top, mine }) {
+  const list = $("rank-list");
+  list.replaceChildren(...top.map((row, i) => {
+    const li = document.createElement("li");
+    li.classList.toggle("me", row.me);
+    for (const [cls, text] of [["no", `${i + 1}위`], ["name", row.name], ["score", `${row.score}점`]]) {
+      const span = document.createElement("span");
+      span.className = cls;
+      span.textContent = text;
+      li.append(span);
+    }
+    return li;
+  }));
+  const note = !top.length ? "아직 오늘 기록이 없어요. 처음으로 올려 보세요."
+    : mine && !top.some(r => r.me) ? `내 순위는 ${mine.rank}위, ${mine.score}점이에요.` : "";
+  $("rank-note").textContent = note;
+}
+
+async function refreshRanking() {
+  try {
+    const res = await fetch(`${RANK_API}/rank?day=${encodeURIComponent(todayKey())}&player=${player().id}`);
+    if (!res.ok) throw new Error(res.status);
+    renderRanking(await res.json());
+  } catch {
+    $("rank-list").replaceChildren();
+    $("rank-note").textContent = "랭킹을 불러오지 못했어요.";
+  }
+}
+
+async function submitRank(e) {
+  e.preventDefault();
+  const name = $("rank-name").value.trim();
+  if (!name || !endless?.over) return;
+  const me = { ...player(), name };
+  saveJson(PLAYER_KEY, me);
+  const button = $("rank-form").querySelector("button");
+  button.disabled = true;
+  $("rank-note").textContent = "올리는 중이에요.";
+  const { day, score, count, perfects, taps } = endless;
+  try {
+    const res = await fetch(`${RANK_API}/rank`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ day, player: me.id, name, score, count, perfects, taps }),
+    });
+    if (!res.ok) throw new Error(res.status);
+    $("rank-form").hidden = true;
+    renderRanking(await res.json());
+  } catch {
+    button.disabled = false;
+    $("rank-note").textContent = "올리지 못했어요. 잠시 뒤 다시 눌러 주세요.";
+  }
 }
 
 // 탭 아이콘도 같은 스프라이트로 그린다. data URI 안에서는 CSS 변수가 안 먹어 실제 색값을 꺼내 넣는다.
@@ -1461,6 +1739,10 @@ async function nativeShare() {
 $("save-img").addEventListener("click", saveImage);
 $("copy-link").addEventListener("click", copyLink);
 $("share-kakao").addEventListener("click", kakaoShare);
+$("endless-start").addEventListener("click", startEndless);
+$("endless-again").addEventListener("click", startEndless);
+$("endless-exit").addEventListener("click", exitEndless);
+$("rank-form").addEventListener("submit", submitRank);
 
 rollBtn.addEventListener("click", hit);
 stage.addEventListener("click", hit);
@@ -1573,7 +1855,7 @@ else {
   resetAcorn();
   gauge.speed = acornType.speed;
   gauge.newZone(true);
-  requestAnimationFrame(t => gauge.tick(t));
+  gauge.start();
 }
 </script>
 </body>

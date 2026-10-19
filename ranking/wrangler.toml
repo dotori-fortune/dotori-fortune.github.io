@@ -1,0 +1,8 @@
+name = "acorn-rank"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "acorn-rank"
+database_id = "9089cfe5-5218-43cb-92dc-cc151805ef96"
