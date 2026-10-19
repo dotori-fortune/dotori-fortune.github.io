@@ -432,11 +432,8 @@
 
   <div class="actions" id="actions" hidden>
     <button class="tool kakao pixel-box" id="share-kakao" type="button" hidden>카카오톡 공유</button>
-    <button class="tool pixel-box" id="share-native" type="button" hidden>공유하기</button>
     <button class="tool pixel-box" id="save-img" type="button">이미지 저장</button>
     <button class="tool pixel-box" id="copy-link" type="button" hidden>링크 복사</button>
-    <a class="tool pixel-box" id="share-x" target="_blank" rel="noopener" hidden>X에 공유</a>
-    <a class="tool pixel-box" id="share-fb" target="_blank" rel="noopener" hidden>페이스북에 공유</a>
   </div>
   <p class="share-note" id="share-note" aria-live="polite"></p>
 
@@ -1370,17 +1367,13 @@ const shareUrl = () => `${location.origin}${location.pathname}`;
 const shareText = () => `오늘 도토리 점괘는 '${FORTUNES[today.fortune][0]}', ${today.taps}번 만에 깼어요. 내 점괘도 깨 보세요.`;
 const shareNote = msg => { $("share-note").textContent = msg; };
 
-// 파일로 열었을 때는 받는 사람이 열 주소가 없어 링크 공유 버튼을 숨긴다.
+// 사이트에서는 링크 복사와 카톡 공유만 둔다. 파일로 열면 받는 사람이 열 주소가 없어 이미지 저장만 남긴다.
+// 카카오 키가 없으면 폰의 공유 창으로 카톡을 고르게 한다.
 function setupShare() {
   if (!isPublic()) return;
-  const enc = encodeURIComponent;
-  $("share-x").href = `https://twitter.com/intent/tweet?text=${enc(shareText())}&url=${enc(shareUrl())}`;
-  $("share-fb").href = `https://www.facebook.com/sharer/sharer.php?u=${enc(shareUrl())}`;
-  // 기본 공유 창이 있으면 X·페이스북은 그 안에 들어 있어 따로 두지 않는다.
-  const native = !!navigator.share;
+  $("save-img").hidden = true;
   $("copy-link").hidden = false;
-  $("share-native").hidden = !native;
-  [$("share-x"), $("share-fb")].forEach(el => { el.hidden = native; });
+  $("share-kakao").hidden = !KAKAO_JS_KEY && !navigator.share;
 }
 
 /* ---------- 카카오톡 공유 ---------- */
@@ -1389,7 +1382,6 @@ function setupShare() {
 const KAKAO_JS_KEY = "";
 const KAKAO_SDK = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js";
 let kakaoReady;
-$("share-kakao").hidden = !KAKAO_JS_KEY;
 
 function loadKakao() {
   kakaoReady ??= new Promise((resolve, reject) => {
@@ -1460,7 +1452,6 @@ async function nativeShare() {
 
 $("save-img").addEventListener("click", saveImage);
 $("copy-link").addEventListener("click", copyLink);
-$("share-native").addEventListener("click", nativeShare);
 $("share-kakao").addEventListener("click", kakaoShare);
 
 rollBtn.addEventListener("click", hit);
