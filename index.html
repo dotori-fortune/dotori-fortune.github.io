@@ -998,7 +998,7 @@ function quake(d) {
 }
 
 // 마지막 타격 뒤 금 사이로 빛이 새어 나오다가 쪼개진다.
-async function crackGlow() {
+async function crackGlow(stepMs = 110) {
   if (reduceMotion) return;
   const [from, to] = CRACK_ROWS.at(-1);
   for (let k = 1; k <= 3; k++) {
@@ -1009,7 +1009,7 @@ async function crackGlow() {
     }
     const j = k % 2 ? -1 : 1;
     acorn.style.transform = `translate(${acornLeft() + j * Math.round(CELL / 2)}px, ${acornTop()}px)`;
-    await wait(110);
+    await wait(stepMs);
   }
   layoutAcorn();
 }
@@ -1169,7 +1169,8 @@ async function hit() {
   popText(kind);
   impact(kind);
   drawCrack(crackLevel());
-  await shake(kind);
+  // 무한 도토리는 맞히면 바로 쪼개지므로 흔들림을 건너뛴다.
+  if (!endless || kind === "miss") await shake(kind);
   if (kind === "miss") {
     particles(acornLeft() + 3 * CELL, baseY(), "--dust", 2, 24);
     particles(acornLeft() + SPRITE_W - 3 * CELL, baseY(), "--dust", 2, 24);
@@ -1260,7 +1261,7 @@ function relayout() {
 const ENDLESS = { hp: 1, speed: 0.9, speedStep: 0.05, speedMax: 2.2, zone: 0.75, zoneStep: 0.03, zoneMin: 0.4, twistFrom: 3 };
 const ENDLESS_TWISTS = ["wobble", "drift", "narrow", "flip"];
 const ENDLESS_FLIP_EVERY = 1.1;
-const ENDLESS_POP_MS = 420;
+const ENDLESS_GLOW_MS = 40, ENDLESS_POP_MS = 160;
 const ENDLESS_KEY = "acorn-fortune-endless";
 const PLAYER_KEY = "acorn-fortune-player";
 let endless = null;
@@ -1313,7 +1314,7 @@ function startEndless() {
 }
 
 async function popAcorn() {
-  await crackGlow();
+  await crackGlow(ENDLESS_GLOW_MS);
   showSplitAcorn();
   const mid = stage.clientWidth / 2;
   burst("final", mid, acornTop() + 12 * CELL);
