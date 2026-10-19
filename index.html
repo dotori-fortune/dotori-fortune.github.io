@@ -1336,10 +1336,7 @@ async function renderCard() {
     factLines[i].forEach(l => { text(l, left + LABEL_W, cy, "36px Galmuri9", v("--ink")); cy += LH; });
   });
 
-  y += cardH + 56;
-  const footer = isPublic() ? `${location.host}${location.pathname}` : "도토리 점괘";
-  text(footer, W / 2, y, "36px Galmuri9", v("--ink-soft"), "center");
-  y += 36 + PAD;
+  y += cardH + PAD;
 
   const out = document.createElement("canvas");
   out.width = W; out.height = y;
