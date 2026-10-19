@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 JS = r"""async () => {
   await Promise.all(["88px Galmuri11", "104px Galmuri14", "66px Galmuri11", "34px Galmuri11"].map(f => document.fonts.load(f)));
   const css = getComputedStyle(acorn), v = n => css.getPropertyValue(n).trim();
-  const W = 1200, H = 630, c = 14, U = 8, B = 6, SCENE_LIFT = 20;
+  const W = 1200, H = 630, c = 12, U = 8, B = 6, SCENE_LIFT = 40;
   const cv = Object.assign(document.createElement("canvas"), { width: W, height: H });
   const g = cv.getContext("2d"); g.imageSmoothingEnabled = false;
   const rnd = seeded(7);
@@ -31,7 +31,7 @@ JS = r"""async () => {
   // 아래에 게이지를 둘 자리를 내려고 장면을 위로 올린다.
   g.save(); g.translate(0, -SCENE_LIFT);
   // 바닥
-  const cols = 96, rows = 10, gx = (W - cols * U) / 2, gy = 470, ggy = 498;
+  const cols = 96, rows = 8, gx = (W - cols * U) / 2, gy = 470, ggy = 498;
   for (let r = 0; r < rows; r++) {
     const dy = (r + 0.5) / rows * 2 - 1, half = Math.round(cols / 2 * Math.sqrt(1 - dy * dy)), x0 = gx + (cols / 2 - half) * U;
     rect(x0 - U, ggy + r * U, (half * 2 + 2) * U, U, v("--ground-edge"));
@@ -52,11 +52,11 @@ JS = r"""async () => {
     cells.forEach(([x, y]) => rect(x0 + at(x) - o, y0 + at(y) - o, u + 2 * o, u + 2 * o, v("--outline")));
     cells.forEach(([x, y, col]) => rect(x0 + at(x), y0 + at(y), u, u, v(col)));
   };
-  const cx = W / 2, cy = 330;
+  const cx = W / 2, cy = 366;
   gameBurst("final", 2, cx, cy + 10, 12);
 
   // 쪽지
-  const SW = 120, F = stripFrame(SW), S = sealSize(SW), lineH = 80, pad = 22;
+  const SW = 120, F = stripFrame(SW), S = sealSize(SW), lineH = 64, pad = 22;
   const sh = stripHeight(SW, 0, 2, lineH, pad);
   const sx = cx - SW / 2, sy = gy - sh + 40;
   rect(sx - B, sy - B, SW + 2 * B, sh + B, v("--outline"));
@@ -67,7 +67,7 @@ JS = r"""async () => {
   // 점괘는 깨 봐야 아는 것이라 썸네일에서는 감춘다.
   ty += 2 * lineH + pad / 2;
   // 글자 상자가 아니라 실제 잉크 상자 기준으로 종이 위쪽과 도장 사이 한가운데에 둔다.
-  g.font = "132px Galmuri11"; g.textAlign = "left"; g.textBaseline = "alphabetic";
+  g.font = "110px Galmuri11"; g.textAlign = "left"; g.textBaseline = "alphabetic";
   const qm = g.measureText("?"), qw = qm.actualBoundingBoxRight - qm.actualBoundingBoxLeft, qh = qm.actualBoundingBoxAscent + qm.actualBoundingBoxDescent;
   const qTop = sy + F + B, qMid = (qTop + ty) / 2;
   g.fillStyle = v("--slip-ink");
@@ -94,12 +94,12 @@ JS = r"""async () => {
   const flying = (grid, deg, mx, my) => { const r = rotGrid(grid, deg); drawGrid(r, mx - r[0].length * c / 2, my - r.length * c / 2); };
   // 바닥 그림자로 공중에 떠 있음을 보인다.
   const shadowAt = (x, w) => rect(x - w / 2, ggy + 10, w, 12, v("--shadow"));
-  shadowAt(cx - 250, 150); shadowAt(cx + 255, 120);
-  flying(HALF_LEFT, -38, cx - 255, 330);
-  flying(HALF_RIGHT, 72, cx + 262, 340);
+  shadowAt(cx - 240, 130); shadowAt(cx + 245, 104);
+  flying(HALF_LEFT, -38, cx - 245, 360);
+  flying(HALF_RIGHT, 72, cx + 250, 372);
   // 껍질 파편과 흩날리는 궤적
-  const SHARDS = [[-150, 230, "--acorn", 2], [-330, 220, "--cap", 2], [-120, 430, "--acorn-light", 1], [170, 250, "--acorn-dark", 2],
-    [350, 300, "--cap-dark", 2], [140, 450, "--acorn", 1], [-380, 380, "--acorn-dark", 1], [395, 440, "--acorn-light", 1]];
+  const SHARDS = [[-150, 264, "--acorn", 2], [-330, 254, "--cap", 2], [-120, 464, "--acorn-light", 1], [170, 284, "--acorn-dark", 2],
+    [350, 334, "--cap-dark", 2], [140, 484, "--acorn", 1], [-380, 414, "--acorn-dark", 1], [395, 474, "--acorn-light", 1]];
   SHARDS.forEach(([dx, y, col, n]) => {
     rect(cx + dx, y, n * 8, n * 8, v("--outline"));
     rect(cx + dx + 2, y + 2, n * 8 - 4, n * 8 - 4, v(col));
@@ -109,11 +109,11 @@ JS = r"""async () => {
 
   // 반짝이
   const SPARK = [".X.", "XXX", ".X."];
-  [[cx - 190, 240], [cx + 180, 210], [cx - 120, 150], [cx + 230, 330], [cx - 250, 360]].forEach(([x, y]) => sprite(SPARK, x, y, 8, v("--acorn-hi")));
+  [[cx - 190, 274], [cx + 180, 244], [cx - 130, 214], [cx + 230, 364], [cx - 250, 394]].forEach(([x, y]) => sprite(SPARK, x, y, 8, v("--acorn-hi")));
   g.restore();
 
   // 게이지: 커서가 진한 칸 한가운데에 꽂힌 순간
-  const GW = 480, GH = 32, gX = cx - GW / 2, gY = 546, HIT = 0.64;
+  const GW = 480, GH = 32, gX = cx - GW / 2, gY = 506, HIT = 0.64;
   rect(gX - B, gY, GW + 2 * B, GH, v("--outline")); rect(gX, gY - B, GW, GH + 2 * B, v("--outline"));
   rect(gX + B, gY + GH + B, GW, B, v("--drop")); rect(gX + GW + B, gY + B, B, GH, v("--drop"));
   rect(gX, gY, GW, GH, v("--paper"));
@@ -147,7 +147,7 @@ JS = r"""async () => {
       else if (fill(x, y)) px(x, y, v("--acorn"));
     }
   };
-  logo("도토리 점괘", cx, 26, 8);
+  logo("도토리 점괘", cx, 50, 7);
   // 11px 글꼴의 정수 배(66px)로 찍어야 도트가 번지지 않는다.
 
   return cv.toDataURL("image/png");
