@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 JS = r"""async () => {
   await Promise.all(["88px Galmuri11", "104px Galmuri14", "66px Galmuri11", "34px Galmuri11"].map(f => document.fonts.load(f)));
   const css = getComputedStyle(acorn), v = n => css.getPropertyValue(n).trim();
-  const W = 1200, H = 630, c = 14, U = 8, B = 6, SCENE_LIFT = 34;
+  const W = 1200, H = 630, c = 14, U = 8, B = 6, SCENE_LIFT = 20;
   const cv = Object.assign(document.createElement("canvas"), { width: W, height: H });
   const g = cv.getContext("2d"); g.imageSmoothingEnabled = false;
   const rnd = seeded(7);
@@ -53,7 +53,7 @@ JS = r"""async () => {
     cells.forEach(([x, y, col]) => rect(x0 + at(x), y0 + at(y), u, u, v(col)));
   };
   const cx = W / 2, cy = 330;
-  gameBurst("final", 2, cx, cy, 14);
+  gameBurst("final", 2, cx, cy + 10, 12);
 
   // 쪽지
   const SW = 120, F = stripFrame(SW), S = sealSize(SW), lineH = 80, pad = 22;
@@ -64,8 +64,14 @@ JS = r"""async () => {
   rect(sx + F, sy + F, SW - 2 * F, sh - 2 * F, v("--slip-line"));
   rect(sx + F + B, sy + F + B, SW - 2 * F - 2 * B, sh - 2 * F - 2 * B, v("--slip-paper"));
   let ty = sy + F + B + pad;
-  ["대", "길"].forEach((ch, i) => text(ch, cx, ty + i * lineH, "66px Galmuri11", v("--slip-ink")));
+  // 점괘는 깨 봐야 아는 것이라 썸네일에서는 감춘다.
   ty += 2 * lineH + pad / 2;
+  // 글자 상자가 아니라 실제 잉크 상자 기준으로 종이 위쪽과 도장 사이 한가운데에 둔다.
+  g.font = "132px Galmuri11"; g.textAlign = "left"; g.textBaseline = "alphabetic";
+  const qm = g.measureText("?"), qw = qm.actualBoundingBoxRight - qm.actualBoundingBoxLeft, qh = qm.actualBoundingBoxAscent + qm.actualBoundingBoxDescent;
+  const qTop = sy + F + B, qMid = (qTop + ty) / 2;
+  g.fillStyle = v("--slip-ink");
+  g.fillText("?", Math.round(cx - qw / 2 + qm.actualBoundingBoxLeft), Math.round(qMid - qh / 2 + qm.actualBoundingBoxAscent));
   const su = S / SEAL.length, ssx = cx - S / 2;
   SEAL.forEach((row, ry) => [...row].forEach((ch, rx) => { if (ch === "R") rect(ssx + rx * su, ty + ry * su, su, su, v("--seal")); }));
 
@@ -107,7 +113,7 @@ JS = r"""async () => {
   g.restore();
 
   // 게이지: 커서가 진한 칸 한가운데에 꽂힌 순간
-  const GW = 480, GH = 32, gX = cx - GW / 2, gY = 556, HIT = 0.64;
+  const GW = 480, GH = 32, gX = cx - GW / 2, gY = 546, HIT = 0.64;
   rect(gX - B, gY, GW + 2 * B, GH, v("--outline")); rect(gX, gY - B, GW, GH + 2 * B, v("--outline"));
   rect(gX + B, gY + GH + B, GW, B, v("--drop")); rect(gX + GW + B, gY + B, B, GH, v("--drop"));
   rect(gX, gY, GW, GH, v("--paper"));
@@ -115,7 +121,7 @@ JS = r"""async () => {
   zone(ZONE.good, v("--ground-light")); zone(ZONE.perfect, v("--acorn"));
   const curX = Math.round(gX + HIT * GW) - 5;
   rect(curX, gY - 12, 10, GH + 24, v("--outline"));
-  gameBurst("perfect", 2, curX + 5, gY + GH / 2, 8);
+  gameBurst("perfect", 2, curX + 5, gY + GH / 2, 6);
 
   // 떨어지는 잎
   [[110, 120, "--acorn-light"], [1050, 90, "--cap-light"], [210, 330, "--cap-light"], [990, 300, "--acorn-light"], [160, 470, "--ground-light"]]
@@ -141,7 +147,7 @@ JS = r"""async () => {
       else if (fill(x, y)) px(x, y, v("--acorn"));
     }
   };
-  logo("도토리 점괘", cx, 4, 10);
+  logo("도토리 점괘", cx, 26, 8);
   // 11px 글꼴의 정수 배(66px)로 찍어야 도트가 번지지 않는다.
 
   return cv.toDataURL("image/png");
