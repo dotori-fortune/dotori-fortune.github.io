@@ -496,6 +496,10 @@
     <ol class="rank-list" id="rank-list"></ol>
     <p class="rank-note" id="rank-note"></p>
     <div class="actions">
+      <button class="tool kakao pixel-box" id="rank-kakao" type="button">카카오톡으로 랭킹 공유</button>
+      <button class="tool pixel-box" id="rank-copy" type="button">랭킹 복사</button>
+    </div>
+    <div class="actions">
       <button class="tool endless-go pixel-box" id="endless-again" type="button">다시 깨기</button>
       <button class="tool pixel-box" id="endless-exit" type="button">점괘로 돌아가기</button>
     </div>
@@ -1390,7 +1394,10 @@ function exitEndless() {
 
 const RANK_API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "http://127.0.0.1:8787" : "https://acorn-rank.studio54.workers.dev";
 
+let lastRanking = null;
+
 function renderRanking({ top, mine }) {
+  lastRanking = { top, mine };
   const list = $("rank-list");
   list.replaceChildren(...top.map((row, i) => {
     const li = document.createElement("li");
@@ -1711,14 +1718,71 @@ async function kakaoShare() {
   }
 }
 
-async function copyLink() {
-  const url = shareUrl();
-  try { await navigator.clipboard.writeText(url); }
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); }
   catch {
-    const t = Object.assign(document.createElement("textarea"), { value: url });
+    const t = Object.assign(document.createElement("textarea"), { value: text });
     document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove();
   }
+}
+
+async function copyLink() {
+  await copyText(shareUrl());
   shareNote("링크를 복사했어요.");
+}
+
+/* ---------- 랭킹 공유 ---------- */
+
+// 카카오 피드 메시지의 항목 목록은 다섯 줄까지다.
+const RANK_SHARE_TOP = 5;
+const rankNote = msg => { $("rank-note").textContent = msg; };
+const rankRows = () => (lastRanking?.top ?? []).slice(0, RANK_SHARE_TOP).map((r, i) => [`${i + 1}위`, `${r.name} ${r.score}점`]);
+
+// 랭킹에는 오늘 최고점만 남으므로 올렸으면 그 점수를, 아니면 이번 판 점수를 보인다.
+function myRecord() {
+  const mine = lastRanking?.mine;
+  return mine ? ["내 최고", `${mine.rank}위 ${mine.score}점`] : ["이번 판", `${endless.score}점`];
+}
+
+function rankShareText() {
+  return [
+    "오늘의 무한 도토리 랭킹",
+    ...rankRows().map(row => row.join(" ")),
+    myRecord().join(": "),
+    "오늘은 모두 같은 판이에요. 내 기록을 넘어 보세요.",
+    shareUrl(),
+  ].join("\n");
+}
+
+async function copyRanking() {
+  await copyText(rankShareText());
+  rankNote("랭킹을 복사했어요. 단톡방에 붙여 넣어 보세요.");
+}
+
+// 그림은 링크 미리보기용 썸네일을 그대로 쓴다.
+async function kakaoRankShare() {
+  if (!isPublic() || !KAKAO_JS_KEY) return copyRanking();
+  try {
+    const K = await loadKakao();
+    const og = prop => document.querySelector(`meta[property="og:${prop}"]`).content;
+    const link = { mobileWebUrl: shareUrl(), webUrl: shareUrl() };
+    const items = rankRows().map(([item, itemOp]) => ({ item, itemOp }));
+    K.Share.sendDefault({
+      objectType: "feed",
+      content: {
+        title: `무한 도토리 ${endless.count}개, ${endless.score}점`,
+        description: "오늘은 모두 같은 판이에요. 내 기록을 넘어 보세요.",
+        imageUrl: og("image"),
+        imageWidth: +og("image:width"),
+        imageHeight: +og("image:height"),
+        link,
+      },
+      ...(items.length && { itemContent: { profileText: "오늘의 무한 도토리 랭킹", items, sum: myRecord()[0], sumOp: myRecord()[1] } }),
+      buttons: [{ title: "나도 깨 보기", link }],
+    });
+  } catch {
+    rankNote("카카오톡을 열지 못했어요. 랭킹 복사로 보내 주세요.");
+  }
 }
 
 // 폰에서는 공유 시트가 떠서 카카오톡·메시지 같은 앱으로 바로 보낼 수 있다. 이미지를 받는 앱이면 이미지도 같이 간다.
@@ -1740,6 +1804,8 @@ $("endless-start").addEventListener("click", startEndless);
 $("endless-again").addEventListener("click", startEndless);
 $("endless-exit").addEventListener("click", exitEndless);
 $("rank-form").addEventListener("submit", submitRank);
+$("rank-kakao").addEventListener("click", kakaoRankShare);
+$("rank-copy").addEventListener("click", copyRanking);
 
 rollBtn.addEventListener("click", hit);
 stage.addEventListener("click", hit);
