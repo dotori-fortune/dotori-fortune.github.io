@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 JS = r"""async () => {
   await Promise.all(["88px Galmuri11", "104px Galmuri14", "66px Galmuri11", "34px Galmuri11"].map(f => document.fonts.load(f)));
   const css = getComputedStyle(acorn), v = n => css.getPropertyValue(n).trim();
-  const W = 1200, H = 630, c = 12, U = 8, B = 6, SCENE_LIFT = 40;
+  const W = 1200, H = 630, c = 12, U = 8, B = 6, SCENE_LIFT = 40, CONTENT_DROP = 12;
   const cv = Object.assign(document.createElement("canvas"), { width: W, height: H });
   const g = cv.getContext("2d"); g.imageSmoothingEnabled = false;
   const rnd = seeded(7);
@@ -28,6 +28,8 @@ JS = r"""async () => {
   ridge(v("--wood-far"), 6, 11, 9, 10);
   ridge(v("--wood-near"), 4, 8, 4, 10);
 
+  // 카톡 미리보기는 위를 더 많이 잘라서, 그림 전체를 아래로 내려 잘린 틀 안에서 위아래 여백을 맞춘다.
+  g.translate(0, CONTENT_DROP);
   // 아래에 게이지를 둘 자리를 내려고 장면을 위로 올린다.
   g.save(); g.translate(0, -SCENE_LIFT);
   // 바닥
