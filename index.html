@@ -231,6 +231,7 @@
     color: var(--ink-soft);
   }
   .gauge-hint.twist { color: var(--acorn-dark); }
+  .gauge.zone-off .zone, .gauge.cursor-off .cursor { visibility: hidden; }
   /* 도토리 종류마다 몸통 색만 바꾼다. */
   .acorn.soft { --acorn-light: #EDB06A; --acorn: #D98A45; --acorn-dark: #A9632B; }
   .acorn.hard { --acorn-light: #B98552; --acorn: #8F5B2E; --acorn-dark: #603C1C; }
@@ -1067,27 +1068,35 @@ async function split() {
 /* ---------- 게이지 ---------- */
 
 const gauge = {
-  pos: 0, dir: 1, speed: 0, zone: 0.5, zoneDir: 1, scale: 1, mode: "steady", t: 0, last: 0, paused: false,
+  pos: 0, dir: 1, speed: 0, zone: 0.5, zoneDir: 1, scale: 1, base: 1, traits: [], since: 0, jumps: 0, rnd: Math.random, t: 0, last: 0, paused: false,
   cursor: gaugeEl.querySelector(".cursor"),
   good: gaugeEl.querySelector(".good"),
   perfect: gaugeEl.querySelector(".perfect"),
   half(kind) { return ZONE[kind] * this.scale / 2; },
+  has(trait) { return this.traits.includes(trait); },
+  // 칸이 게이지 밖으로 나가지 않게, 가장 넓어질 때를 기준으로 자리를 잡는다.
+  edge() { return ZONE.good * this.base * (this.has("pulse") ? 1 + PULSE : 1) / 2 + 0.05; },
   newZone(first) {
     const twists = Object.keys(GAUGE_MODES).filter(m => m !== "steady");
     const mercy = !endless && misses >= MERCY_FROM;
-    if (endless) this.mode = endlessMode(endless.count);
-    else this.mode = !first && !mercy && Math.random() < TWIST_CHANCE ? pick(twists) : "steady";
+    if (endless) this.traits = endlessTraits(endless.count);
+    else this.traits = !first && !mercy && Math.random() < TWIST_CHANCE ? [pick(twists)] : [];
     const widen = mercy ? Math.min(MERCY_ZONE_MAX, 1 + MERCY_ZONE_STEP * (misses - MERCY_FROM + 1)) : 1;
-    this.scale = acornType.zone * widen * (this.mode === "narrow" ? NARROW_SCALE : 1);
-    const r = endless ? endless.rnd : Math.random;
-    const edge = this.half("good") + 0.05;
-    this.zone = edge + r() * (1 - 2 * edge);
-    this.zoneDir = r() < 0.5 ? 1 : -1;
+    this.scale = this.base = acornType.zone * widen * (this.has("narrow") ? NARROW_SCALE : 1);
+    // 무한 모드는 도토리마다 씨앗을 따로 둬서, 누가 언제 치든 같은 칸이 같은 순서로 나온다.
+    this.rnd = endless ? seeded(daySeed(`${endless.day}:${endless.count}`)) : Math.random;
+    const edge = this.edge();
+    this.zone = edge + this.rnd() * (1 - 2 * edge);
+    this.zoneDir = this.rnd() < 0.5 ? 1 : -1;
+    this.since = this.t;
+    this.jumps = 0;
+    gaugeEl.classList.remove("zone-off", "cursor-off");
     this.placeZone();
     const hint = document.getElementById("gauge-hint");
     const intro = endless ? `${endless.count + 1}번째 도토리` : `오늘은 ${acornType.name}예요`;
-    hint.textContent = mercy ? "칸을 넓게 해 둘게요" : GAUGE_MODES[this.mode] || intro;
-    hint.classList.toggle("twist", mercy || this.mode !== "steady");
+    const twist = this.traits.length > 1 ? this.traits.map(t => TWIST_SHORT[t]).join(" · ") : TWIST_TEXT[this.traits[0]];
+    hint.textContent = mercy ? "칸을 넓게 해 둘게요" : twist || intro;
+    hint.classList.toggle("twist", mercy || this.traits.length > 0);
   },
   placeZone() {
     const pct = v => `${snap(v * 100, 1)}%`;
@@ -1107,15 +1116,27 @@ const gauge = {
     this.last = now;
     if (!this.paused) {
       this.t += dt;
-      const speed = this.mode === "wobble" ? this.speed * (1 + WOBBLE * Math.sin(this.t * 5)) : this.speed;
-      const flip = endless ? this.t % ENDLESS_FLIP_EVERY < dt : Math.random() < FLIP_PER_SEC * dt;
-      if (this.mode === "flip" && flip) this.dir *= -1;
-      if (this.mode === "drift") {
-        const edge = this.half("good") + 0.02;
+      const lt = this.t - this.since;
+      let speed = this.speed;
+      if (this.has("wobble")) speed *= 1 + WOBBLE * Math.sin(lt * 5);
+      if (this.has("dash")) speed *= this.dir > 0 ? DASH_FAST : DASH_SLOW;
+      const flip = endless ? lt % ENDLESS_FLIP_EVERY < dt && lt > dt : Math.random() < FLIP_PER_SEC * dt;
+      if (this.has("flip") && flip) this.dir *= -1;
+      if (this.has("pulse")) this.scale = this.base * (1 + PULSE * Math.sin(lt * PULSE_RATE));
+      if (this.has("shrink")) this.scale = this.base * Math.max(SHRINK_MIN, 1 - SHRINK_RATE * lt);
+      if (this.has("jump") && Math.floor(lt / JUMP_EVERY) > this.jumps) {
+        this.jumps++;
+        const edge = this.edge();
+        this.zone = edge + this.rnd() * (1 - 2 * edge);
+      }
+      if (this.has("drift")) {
+        const edge = this.edge() - 0.03;
         this.zone += this.zoneDir * DRIFT_SPEED * dt;
         if (this.zone < edge || this.zone > 1 - edge) { this.zoneDir *= -1; this.zone = Math.min(1 - edge, Math.max(edge, this.zone)); }
-        this.placeZone();
       }
+      if (this.traits.length) this.placeZone();
+      gaugeEl.classList.toggle("zone-off", this.has("blink") && lt % BLINK_EVERY > BLINK_ON);
+      gaugeEl.classList.toggle("cursor-off", this.has("ghost") && lt % GHOST_EVERY > GHOST_ON);
       this.pos += this.dir * speed * dt;
       if (this.pos > 1) { this.pos = 1; this.dir = -1; }
       if (this.pos < 0) { this.pos = 0; this.dir = 1; }
@@ -1263,15 +1284,53 @@ function relayout() {
 
 // 한 번에 깨지고 헛손질 한 번이면 끝난다. 난이도는 깬 개수로만 오르고,
 // 칸 위치만 오늘 날짜를 씨앗으로 뽑아 같은 날에는 모두 같은 판을 깬다.
-const ENDLESS = { hp: 1, speed: 0.9, speedStep: 0.05, speedMax: 2.2, zone: 0.75, zoneStep: 0.03, zoneMin: 0.4, twistFrom: 3 };
-const ENDLESS_TWISTS = ["wobble", "drift", "narrow", "flip"];
+const ENDLESS = { hp: 1, speed: 0.9, speedStep: 0.05, speedMax: 2.2, zone: 0.75, zoneStep: 0.03, zoneMin: 0.4, twistFrom: 3, tripleFrom: 25 };
+// 변형을 날마다 다른 순서로 하나씩 보여 준 뒤, 그다음부터는 둘씩, 더 가면 셋씩 겹친다.
+const ENDLESS_TWISTS = {
+  wobble: ["속도가 출렁여요", "출렁임"],
+  drift: ["칸이 움직여요", "떠다님"],
+  narrow: ["칸이 좁아졌어요", "좁은 칸"],
+  flip: ["커서가 갑자기 돌아서요", "되돌기"],
+  dash: ["가는 길만 빨라요", "쏠림"],
+  pulse: ["칸이 커졌다 작아져요", "숨쉬기"],
+  shrink: ["칸이 점점 줄어요", "줄어듦"],
+  jump: ["칸이 자리를 옮겨요", "순간이동"],
+  blink: ["칸이 깜빡여요", "칸 깜빡임"],
+  ghost: ["커서가 깜빡여요", "커서 깜빡임"],
+};
+// 같이 걸면 서로 덮어쓰거나 칸과 커서가 한꺼번에 사라지는 짝.
+const ENDLESS_CLASHES = [["pulse", "shrink"], ["blink", "ghost"], ["jump", "drift"]];
+const TWIST_TEXT = { ...GAUGE_MODES, ...Object.fromEntries(Object.entries(ENDLESS_TWISTS).map(([k, [text]]) => [k, text])) };
+const TWIST_SHORT = Object.fromEntries(Object.entries(ENDLESS_TWISTS).map(([k, [, short]]) => [k, short]));
 const ENDLESS_FLIP_EVERY = 1.1;
+const DASH_FAST = 1.5, DASH_SLOW = 0.7, PULSE = 0.35, PULSE_RATE = 3, SHRINK_RATE = 0.25, SHRINK_MIN = 0.45;
+const JUMP_EVERY = 1.2, BLINK_EVERY = 1, BLINK_ON = 0.55, GHOST_EVERY = 0.9, GHOST_ON = 0.55;
 const ENDLESS_GLOW_MS = 40, ENDLESS_POP_MS = 160;
 const ENDLESS_KEY = "acorn-fortune-endless";
 const PLAYER_KEY = "acorn-fortune-player";
 let endless = null;
 
-const endlessMode = n => n < ENDLESS.twistFrom ? "steady" : ENDLESS_TWISTS[(n - ENDLESS.twistFrom) % ENDLESS_TWISTS.length];
+function shuffled(list, rnd) {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function endlessTraits(n) {
+  const names = Object.keys(ENDLESS_TWISTS);
+  const step = n - ENDLESS.twistFrom;
+  if (step < 0) return [];
+  if (step < names.length) return [shuffled(names, seeded(daySeed(`${endless.day}:order`)))[step]];
+  const picked = [];
+  const clash = t => picked.some(p => ENDLESS_CLASHES.some(c => c.includes(p) && c.includes(t)));
+  for (const t of shuffled(names, seeded(daySeed(`${endless.day}:mix:${n}`)))) {
+    if (picked.length < (n >= ENDLESS.tripleFrom ? 3 : 2) && !clash(t)) picked.push(t);
+  }
+  return picked;
+}
 
 function endlessType(n) {
   return {
@@ -1302,7 +1361,7 @@ function renderHud() {
 }
 
 function startEndless() {
-  endless = { rnd: seeded(daySeed(todayKey())), count: 0, score: 0, perfects: 0, taps: 0, over: false, day: todayKey() };
+  endless = { count: 0, score: 0, perfects: 0, taps: 0, over: false, day: todayKey() };
   document.body.classList.remove("done");
   document.body.classList.add("endless");
   $("endless-over").hidden = true;
