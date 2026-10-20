@@ -1411,7 +1411,7 @@ function renderRanking({ top, mine }) {
     }
     return li;
   }));
-  const note = !top.length ? "아직 오늘 기록이 없어요. 처음으로 올려 보세요."
+  const note = !top.length ? "아직 올린 기록이 없어요."
     : mine && !top.some(r => r.me) ? `내 순위는 ${mine.rank}위, ${mine.score}점이에요.` : "";
   $("rank-note").textContent = note;
 }
@@ -1700,7 +1700,7 @@ async function renderRankCard() {
   let ry = y + IN;
   text("오늘의 랭킹", W / 2, ry, "36px Galmuri9", v("--ink-soft"), "center");
   ry += HEAD;
-  if (!rows.length) text("아직 오늘 기록이 없어요.", W / 2, ry + 16, "36px Galmuri9", v("--ink-soft"), "center");
+  if (!rows.length) text("아직 올린 기록이 없어요.", W / 2, ry + 16, "36px Galmuri9", v("--ink-soft"), "center");
   rows.forEach(r => {
     if (!r) { text("⋯", W / 2, ry + 12, "44px Galmuri11", v("--ink-soft"), "center"); ry += RH; return; }
     if (r.me) { g.fillStyle = v("--ground-light"); g.fillRect(left - 16, ry, right - left + 32, RH - 8); }
