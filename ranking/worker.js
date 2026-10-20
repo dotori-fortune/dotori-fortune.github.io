@@ -5,6 +5,9 @@ const NAME_MAX = 8;
 const MISSES = 1;
 const SCORE_MAX = 5000;
 const DAY_MS = 86400000;
+// 상위 목록은 모두에게 같아서 잠깐 캐시에 담아 D1 읽기를 아낀다.
+const TOP_TTL = 5;
+const topKey = day => `https://acorn-rank.cache/top?day=${encodeURIComponent(day)}`;
 
 const json = (body, status, cors) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", ...cors } });
 
@@ -26,17 +29,30 @@ function validRun({ score, count, perfects, taps }) {
   return goods >= 0 && score === 2 * perfects + goods && count === taps - MISSES;
 }
 
-async function ranking(env, day, player) {
+// 캐시에는 player 를 담아 두고, 내보낼 때는 내 줄인지만 표시하고 지운다.
+async function topRows(env, day) {
+  const cache = caches.default;
+  const hit = await cache.match(topKey(day));
+  if (hit) return hit.json();
   const { results } = await env.DB.prepare(
-    "SELECT name, score, count, player = ?2 AS me FROM scores WHERE day = ?1 ORDER BY score DESC, at ASC LIMIT ?3",
-  ).bind(day, player ?? "", TOP).all();
-  let mine = null;
-  if (player) {
-    mine = await env.DB.prepare(
-      "SELECT s.score, (SELECT COUNT(*) FROM scores o WHERE o.day = s.day AND (o.score > s.score OR (o.score = s.score AND o.at < s.at))) + 1 AS rank FROM scores s WHERE s.day = ?1 AND s.player = ?2",
-    ).bind(day, player).first();
-  }
-  return { top: results.map(r => ({ ...r, me: !!r.me })), mine };
+    "SELECT player, name, score, count FROM scores WHERE day = ?1 ORDER BY score DESC, at ASC LIMIT ?2",
+  ).bind(day, TOP).all();
+  await cache.put(topKey(day), new Response(JSON.stringify(results), { headers: { "cache-control": `max-age=${TOP_TTL}` } }));
+  return results;
+}
+
+// 순위는 나보다 높은 점수의 사람 수 + 1 이다. 점수별 인원표(hist)를 더해서 참가자 수와 상관없이 몇 줄만 읽는다.
+async function myRank(env, day, player) {
+  const mine = await env.DB.prepare("SELECT score FROM scores WHERE day = ?1 AND player = ?2").bind(day, player).first();
+  if (!mine) return null;
+  const above = await env.DB.prepare("SELECT COALESCE(SUM(n), 0) AS n FROM hist WHERE day = ?1 AND score > ?2").bind(day, mine.score).first();
+  return { score: mine.score, rank: above.n + 1 };
+}
+
+async function ranking(env, day, player) {
+  const rows = await topRows(env, day);
+  const top = rows.map(({ player: p, ...r }) => ({ ...r, me: !!player && p === player }));
+  return { top, mine: player ? await myRank(env, day, player) : null };
 }
 
 export default {
@@ -61,11 +77,21 @@ export default {
       try { run = await req.json(); } catch { return json({ error: "bad body" }, 400, cors); }
       const name = String(run.name ?? "").replace(/[\p{C}<>]/gu, "").trim().slice(0, NAME_MAX);
       if (!validDay(run.day) || !validPlayer(run.player) || !name || !validRun(run)) return json({ error: "bad run" }, 400, cors);
-      await env.DB.prepare(
-        `INSERT INTO scores (day, player, name, score, count, at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-         ON CONFLICT (day, player) DO UPDATE SET name = excluded.name, score = excluded.score, count = excluded.count, at = excluded.at
-         WHERE excluded.score > scores.score`,
-      ).bind(run.day, run.player, name, run.score, run.count, Date.now()).run();
+      const prev = await env.DB.prepare("SELECT score FROM scores WHERE day = ?1 AND player = ?2").bind(run.day, run.player).first();
+      if (!prev || run.score > prev.score) {
+        const bump = (score, d) => env.DB.prepare(
+          "INSERT INTO hist (day, score, n) VALUES (?1, ?2, ?3) ON CONFLICT (day, score) DO UPDATE SET n = n + excluded.n",
+        ).bind(run.day, score, d);
+        await env.DB.batch([
+          env.DB.prepare(
+            `INSERT INTO scores (day, player, name, score, count, at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT (day, player) DO UPDATE SET name = excluded.name, score = excluded.score, count = excluded.count, at = excluded.at`,
+          ).bind(run.day, run.player, name, run.score, run.count, Date.now()),
+          bump(run.score, 1),
+          ...(prev ? [bump(prev.score, -1)] : []),
+        ]);
+        await caches.default.delete(topKey(run.day));
+      }
       return json(await ranking(env, run.day, run.player), 200, cors);
     }
     return json({ error: "method" }, 405, cors);
