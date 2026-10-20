@@ -43,10 +43,10 @@ async function topRows(env, day) {
 
 // 순위는 나보다 높은 점수의 사람 수 + 1 이다. 점수별 인원표(hist)를 더해서 참가자 수와 상관없이 몇 줄만 읽는다.
 async function myRank(env, day, player) {
-  const mine = await env.DB.prepare("SELECT score FROM scores WHERE day = ?1 AND player = ?2").bind(day, player).first();
+  const mine = await env.DB.prepare("SELECT score, count FROM scores WHERE day = ?1 AND player = ?2").bind(day, player).first();
   if (!mine) return null;
   const above = await env.DB.prepare("SELECT COALESCE(SUM(n), 0) AS n FROM hist WHERE day = ?1 AND score > ?2").bind(day, mine.score).first();
-  return { score: mine.score, rank: above.n + 1 };
+  return { score: mine.score, count: mine.count, rank: above.n + 1 };
 }
 
 async function ranking(env, day, player) {

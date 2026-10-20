@@ -1783,7 +1783,8 @@ async function renderRankCard() {
   y = groundBottom + 56;
 
   if (first) { text("오늘의 1위", W / 2, y, "66px Galmuri11", v("--crown"), "center"); y += 96; }
-  text(`도토리 ${endless.count}개 · ${endless.score}점`, W / 2, y, "66px Galmuri11", v("--ink"), "center");
+  const run = shareRun();
+  text(`도토리 ${run.count}개 · ${run.score}점`, W / 2, y, "66px Galmuri11", v("--ink"), "center");
   y += 128;
 
   // 상위권에 내가 없으면 줄임표 뒤에 내 줄을 덧붙인다.
@@ -1923,6 +1924,9 @@ const rankNote = msg => { $("rank-note").textContent = msg; };
 const rankRows = () => (lastRanking?.top ?? []).slice(0, RANK_SHARE_TOP).map((r, i) => [`${i + 1}위`, `${r.name} ${r.score}점`]);
 
 // 랭킹에는 오늘 최고점만 남으므로 올렸으면 그 점수를, 아니면 이번 판 점수를 보인다.
+// 랭킹을 공유하므로 올린 기록이 있으면 그 판을, 없으면 이번 판을 그린다.
+const shareRun = () => lastRanking?.mine ?? { count: endless.count, score: endless.score };
+
 function myRecord() {
   const mine = lastRanking?.mine;
   return mine ? ["내 최고", `${mine.rank}위 ${mine.score}점`] : ["이번 판", `${endless.score}점`];
@@ -1956,7 +1960,7 @@ async function kakaoRankShare() {
     K.Share.sendDefault({
       objectType: "feed",
       content: {
-        title: first ? "오늘의 무한 도토리 1위예요" : `무한 도토리 ${endless.count}개, ${endless.score}점`,
+        title: first ? "오늘의 무한 도토리 1위예요" : `무한 도토리 ${shareRun().count}개, ${shareRun().score}점`,
         description: `${myRecord().join(" ")}. ${RANK_SHARE_INVITE}`,
         imageUrl: up.infos.original.url,
         imageWidth: cv.width,
