@@ -1315,6 +1315,7 @@ function startEndless() {
   Object.assign(gauge, { pos: 0, dir: 1, t: 0, paused: false });
   gauge.newZone(true);
   gauge.start();
+  saveRun();
   scrollTo({ top: 0 });
 }
 
@@ -1338,6 +1339,7 @@ async function endlessHit(kind) {
     return endEndless();
   }
   endless.count++;
+  saveRun();
   await popAcorn();
   nextEndlessAcorn();
   resetAcorn();
@@ -1353,11 +1355,44 @@ function saveJson(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
-function saveBest(score) {
+function saveEndless(patch) {
   const saved = loadJson(ENDLESS_KEY);
-  const best = saved?.date === endless.day ? Math.max(saved.best, score) : score;
-  saveJson(ENDLESS_KEY, { date: endless.day, best });
+  const base = saved?.date === endless.day ? saved : { date: endless.day, best: 0 };
+  saveJson(ENDLESS_KEY, { ...base, ...patch });
+}
+
+function saveBest(score) {
+  const best = Math.max(loadJson(ENDLESS_KEY)?.date === endless.day ? loadJson(ENDLESS_KEY).best : 0, score);
+  saveEndless({ best });
   return best;
+}
+
+// 오늘 마지막 판을 남겨 두고, 무한 도토리에 들어오면 그 결과부터 보인다.
+const saveRun = () => saveEndless({ open: true, run: (({ count, score, perfects, taps, over }) => ({ count, score, perfects, taps, over }))(endless) });
+
+function enterEndless() {
+  const saved = loadJson(ENDLESS_KEY);
+  if (saved?.date !== todayKey() || !(saved.run || saved.best)) return startEndless();
+  resumeEndless(saved.run ?? { count: 0, score: 0, perfects: 0, taps: 1, over: true }, saved.run ? "" : saved.best);
+}
+
+// 기록만 있고 판이 없으면 최고 점수만 보인다.
+function resumeEndless(run, bestOnly) {
+  endless = { ...run, day: todayKey() };
+  // 판 도중에 닫았으면 그 자리에서 헛손질한 것으로 친다.
+  if (!run.over) endless.taps++;
+  document.body.classList.remove("done");
+  document.body.classList.add("endless");
+  $("endless-hud").hidden = false;
+  renderHud();
+  relayout();
+  endEndless();
+  if (bestOnly) {
+    saveEndless({ run: null });
+    $("endless-hud").hidden = $("rank-form").hidden = true;
+    $("endless-score").textContent = `오늘 내 최고 기록은 ${bestOnly}점이에요.`;
+    $("endless-best").textContent = "";
+  }
 }
 
 // 랭킹에서 내 줄을 찾으려고 기기마다 무작위 아이디를 하나 둔다.
@@ -1371,6 +1406,7 @@ function player() {
 
 function endEndless() {
   endless.over = true;
+  saveRun();
   gaugeEl.hidden = rollBtn.hidden = true;
   const best = saveBest(endless.score);
   $("endless-score").textContent = `도토리 ${endless.count}개, ${endless.score}점`;
@@ -1383,6 +1419,7 @@ function endEndless() {
 }
 
 function exitEndless() {
+  saveEndless({ open: false });
   endless = null;
   document.body.classList.remove("endless");
   $("endless-over").hidden = $("endless-hud").hidden = true;
@@ -1889,7 +1926,7 @@ async function nativeShare() {
 $("save-img").addEventListener("click", saveImage);
 $("copy-link").addEventListener("click", copyLink);
 $("share-kakao").addEventListener("click", kakaoShare);
-$("endless-start").addEventListener("click", startEndless);
+$("endless-start").addEventListener("click", enterEndless);
 $("endless-again").addEventListener("click", startEndless);
 $("endless-exit").addEventListener("click", exitEndless);
 $("rank-form").addEventListener("submit", submitRank);
@@ -2002,7 +2039,9 @@ drawScene();
 today = loadToday();
 acornType = today ? ACORN_TYPES.find(t => t.id === today.type) ?? ACORN_TYPES[1] : pick(ACORN_TYPES);
 acorn.classList.add(acornType.id);
-if (today) showToday();
+const lastRun = loadJson(ENDLESS_KEY);
+if (today && lastRun?.date === todayKey() && lastRun.open && lastRun.run) resumeEndless(lastRun.run);
+else if (today) showToday();
 else {
   resetAcorn();
   gauge.speed = acornType.speed;
