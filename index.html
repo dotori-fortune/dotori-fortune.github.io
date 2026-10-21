@@ -464,6 +464,18 @@
   .install-guide ol { margin: 0; padding-left: 1.4em; line-height: 1.8; }
   .install-guide .share-icon { width: 22px; height: auto; vertical-align: -4px; margin: 0 2px; }
   .install-guide .actions { margin-top: var(--gap-l); }
+  /* 카카오톡에서 바깥 브라우저로 넘어온 사람에게 점괘 대신 먼저 보여 주는 화면 */
+  main[hidden], .planting main:not(.plant) { display: none; }
+  .plant { gap: var(--gap-m); align-items: center; }
+  .plant-art { width: calc(var(--plant-w) * 6px); height: auto; shape-rendering: crispEdges; }
+  .plant h2 { font-family: var(--font-title); font-weight: 400; font-size: 28px; line-height: 1.3; margin: var(--gap-m) 0 0; color: var(--acorn); text-shadow: 2px 2px 0 var(--outline); }
+  .plant-lead { margin: 0; }
+  .plant .tool { margin: var(--gap-s) 0 0; }
+  .plant-go { font-family: var(--font-mid); font-size: 22px; padding: var(--gap-s) var(--gap-l); }
+  .plant-steps { width: min(100%, 340px); box-sizing: border-box; margin: var(--gap-s) 0 0; padding: var(--gap-m) var(--gap-m) var(--gap-m) calc(var(--gap-m) + 1.4em); background: var(--paper); text-align: left; }
+  .plant-steps[hidden], .plant-menu[hidden] { display: none; }
+  .plant-steps .share-icon { width: 22px; height: auto; vertical-align: -4px; margin: 0 2px; }
+  .plant-menu { margin: var(--gap-s) 0 0; color: var(--ink-soft); }
 
   /* 무한 도토리는 점괘 화면을 걷고 첫 화면처럼 무대와 게이지만 둔다. */
   .endless .lead, .endless .legend, .endless .result, .endless #actions, .endless .share-note, .endless .install-toast { display: none; }
@@ -571,7 +583,7 @@
   <dialog class="install-guide pixel-box" id="install-guide">
     <h2>홈 화면에 추가하기</h2>
     <ol>
-      <li>화면 아래 <span id="share-icon"></span> 공유 버튼을 눌러요.</li>
+      <li>화면 아래 <span class="share-slot"></span> 공유 버튼을 눌러요.</li>
       <li>'홈 화면에 추가'를 골라요.</li>
     </ol>
     <form class="actions" method="dialog"><button class="tool pixel-box">닫기</button></form>
@@ -623,6 +635,17 @@
   </section>
 
   <p class="legend">진한 칸을 맞히면 금이 크게 가요.</p>
+</main>
+<main class="plant" id="plant" hidden>
+  <svg class="plant-art" id="plant-art" aria-hidden="true"></svg>
+  <h2 id="plant-title"></h2>
+  <p class="plant-lead" id="plant-lead"></p>
+  <button class="tool endless-go pixel-box plant-go" id="plant-go" type="button" hidden>홈 화면에 심기</button>
+  <ol class="plant-steps pixel-box" id="plant-ios" hidden>
+    <li>화면 아래 <span class="share-slot"></span> 공유 버튼을 눌러요.</li>
+    <li>'홈 화면에 추가'를 골라요.</li>
+  </ol>
+  <p class="plant-menu" id="plant-menu" hidden>브라우저 메뉴에서 '홈 화면에 추가'를 골라요.</p>
 </main>
 
 <script>
@@ -2283,12 +2306,15 @@ const SHARE_ICON = ["....X....", "...XXX...", "..X.X.X..", "....X....", "....X..
 const installed = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const inAppBrowser = /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(navigator.userAgent);
+const isKakao = /KAKAOTALK/i.test(navigator.userAgent);
 let installPrompt = null;
 {
-  const svg = svgEl(SHARE_ICON[0].length, SHARE_ICON.length, "share-icon");
-  svg.setAttribute("viewBox", `0 0 ${SHARE_ICON[0].length} ${SHARE_ICON.length}`);
-  SHARE_ICON.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === "X") addRect(svg, x, y, 1, 1, "var(--ink)"); }));
-  $("share-icon").replaceWith(svg);
+  document.querySelectorAll(".share-slot").forEach(slot => {
+    const svg = svgEl(SHARE_ICON[0].length, SHARE_ICON.length, "share-icon");
+    svg.setAttribute("viewBox", `0 0 ${SHARE_ICON[0].length} ${SHARE_ICON.length}`);
+    SHARE_ICON.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === "X") addRect(svg, x, y, 1, 1, "var(--ink)"); }));
+    slot.replaceWith(svg);
+  });
   const acorn = svgEl(GRID_W, GRID_H, "toast-icon");
   acorn.setAttribute("viewBox", `0 0 ${GRID_W} ${GRID_H}`);
   acorn.id = "install-icon";
@@ -2298,7 +2324,7 @@ let installPrompt = null;
 // 토스트는 기기마다 최대 TOAST_DAYS 날만 띄우고, 닫거나 추가하면 다시 띄우지 않는다.
 const INSTALL_KEY = "acorn-fortune-install", TOAST_DELAY_MS = 1200, TOAST_SHOW_MS = 5000, DONE_SHOW_MS = 3000, TOAST_DAYS = 3;
 const INSTALL_ASK = "홈 화면에 도토리 심을까요?", INSTALL_DONE = "홈 화면에 도토리를 심었어요";
-const canInstall = () => !installed() && (installPrompt || (isIos && !inAppBrowser));
+const canInstall = () => !installed() && (installPrompt || isKakao || (isIos && !inAppBrowser));
 let toastTimer = 0;
 function hideToast(forever) {
   clearTimeout(toastTimer);
@@ -2324,22 +2350,78 @@ async function installToast() {
   const days = seen.days ?? [];
   if (seen.off || days.includes(todayKey()) || days.length >= TOAST_DAYS) return;
   await wait(TOAST_DELAY_MS);
-  if (!canInstall() || document.body.classList.contains("endless")) return;
+  if (!canInstall() || document.body.classList.contains("endless") || document.body.classList.contains("planting")) return;
   saveJson(INSTALL_KEY, { ...seen, days: [...days, todayKey()] });
   showToast(INSTALL_ASK, true, TOAST_SHOW_MS);
 }
 addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   installPrompt = e;
+  renderPlant();
+});
+
+// 카카오톡 브라우저는 홈 화면에 추가할 수 없어 기본 브라우저로 넘긴다.
+// 저장소가 브라우저마다 따로라 오늘 점괘·랭킹 아이디를 주소에 실어 같은 사람으로 이어지게 한다.
+const CARRY_KEYS = [STORE_KEY, PLAYER_KEY, ENDLESS_KEY], PLANT_HASH = "#plant=", PLANT_WAIT_MS = 1500;
+function openOutside() {
+  const carry = Object.fromEntries(CARRY_KEYS.map(k => [k, localStorage.getItem(k)]).filter(([, v]) => v));
+  const url = `${location.origin}${location.pathname}${PLANT_HASH}${encodeURIComponent(JSON.stringify(carry))}`;
+  location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(url)}`;
+}
+// 넘어온 주소면 실어 온 값을 저장하고 주소를 지운다. 이미 설치한 사람에게는 심기 화면을 띄우지 않는다.
+function takePlant() {
+  if (!location.hash.startsWith(PLANT_HASH)) return false;
+  try {
+    const carry = JSON.parse(decodeURIComponent(location.hash.slice(PLANT_HASH.length)));
+    CARRY_KEYS.forEach(k => { if (typeof carry[k] === "string") localStorage.setItem(k, carry[k]); });
+  } catch {}
+  history.replaceState(null, "", location.pathname + location.search);
+  return !installed();
+}
+let plantWaited = false, planted = false;
+function renderPlant() {
+  if ($("plant").hidden) return;
+  $("plant-title").textContent = planted ? "도토리를 심었어요" : "홈 화면에 도토리 심기";
+  $("plant-lead").textContent = planted ? "이제 홈 화면의 도토리를 누르면 바로 열려요." : "한 번 심어 두면 다음부터는 홈 화면에서 바로 열 수 있어요.";
+  $("plant-go").hidden = planted || !installPrompt;
+  $("plant-ios").hidden = planted || !isIos;
+  $("plant-menu").hidden = planted || isIos || !!installPrompt || !plantWaited;
+}
+function showPlant() {
+  const bottom = WHOLE.findLastIndex(row => row.some(Boolean));
+  const art = $("plant-art"), pad = 6, w = GRID_W + 2 * pad, soil = bottom - 4, h = bottom + 4;
+  art.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  art.style.setProperty("--plant-w", w);
+  WHOLE.forEach((row, y) => row.forEach((c, x) => { if (c) addRect(art, x + pad, y, 1, 1, `var(${COLORS[c]})`); }));
+  // 도토리 아랫부분을 흙 둔덕이 덮어 심긴 것처럼 보이게 한다. 윗줄일수록 좁다.
+  [8, 5, 3, 1, 0, 0, 0, 0].forEach((inset, y) => {
+    addRect(art, inset, soil + y, w - 2 * inset, 1, "var(--stem)");
+    addRect(art, inset, soil + y, 1, 1, "var(--outline)");
+    addRect(art, w - inset - 1, soil + y, 1, 1, "var(--outline)");
+  });
+  addRect(art, 8, soil, w - 16, 1, "var(--outline)");
+  [[7, 2], [12, 4], [19, 2], [23, 5], [4, 6], [16, 6], [27, 6]].forEach(([x, y]) => addRect(art, x, soil + y, 2, 1, "var(--cap)"));
+  document.body.classList.add("planting");
+  $("plant").hidden = false;
+  renderPlant();
+  setTimeout(() => { plantWaited = true; renderPlant(); }, PLANT_WAIT_MS);
+}
+$("plant-go").addEventListener("click", async () => {
+  installPrompt.prompt();
+  if ((await installPrompt.userChoice).outcome === "accepted") installPrompt = null;
 });
 // 설치 창에서 '설치'를 눌러 아이콘이 생기면 알린다. 아이폰은 설치 여부를 알 수 없어 띄우지 않는다.
 addEventListener("appinstalled", () => {
   installPrompt = null;
   hideToast(true);
+  planted = true;
+  renderPlant();
+  if (!$("plant").hidden) return;
   if (!document.body.classList.contains("endless")) showToast(INSTALL_DONE, false, DONE_SHOW_MS);
 });
 $("install-close").addEventListener("click", () => hideToast(true));
 $("install").addEventListener("click", async () => {
+  if (isKakao) { hideToast(false); return openOutside(); }
   if (!installPrompt) { hideToast(true); return $("install-guide").showModal(); }
   installPrompt.prompt();
   const { outcome } = await installPrompt.userChoice;
@@ -2447,6 +2529,7 @@ backdropSize = `${innerWidth}x${innerHeight}`;
 drawBackdrop();
 sizeAcorn();
 drawScene();
+const planting = takePlant();
 today = loadToday();
 acornType = today ? acornById(today.type) : FORTUNES[dayFortune()][0] === "천운" ? GOLDEN_ACORN : pick(ACORN_TYPES);
 acorn.classList.add(acornType.id);
@@ -2463,6 +2546,7 @@ else {
   gauge.newZone(true);
   gauge.start();
 }
+if (planting) showPlant();
 </script>
 </body>
 </html>
