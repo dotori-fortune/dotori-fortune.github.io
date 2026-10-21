@@ -641,7 +641,7 @@
   </ol>
   <ol id="guide-menu">
     <li>브라우저 메뉴(⋮ 또는 ≡)를 눌러요.</li>
-    <li>'홈 화면에 추가'나 '앱 설치'를 골라요.</li>
+    <li>'홈 화면에 추가', '앱 설치', '현재 페이지 추가' 중 보이는 것을 골라요.</li>
   </ol>
   <form class="actions" method="dialog"><button class="tool pixel-box">닫기</button></form>
 </dialog>
@@ -2365,22 +2365,28 @@ addEventListener("beforeinstallprompt", e => {
   renderPlant();
 });
 
-// 카카오톡 브라우저는 홈 화면에 추가할 수 없어 기본 브라우저로 넘긴다.
+// 카카오톡 브라우저는 홈 화면에 추가할 수 없어 바깥 브라우저로 넘긴다.
+// 안드로이드는 Chrome 으로 연다. 기본 브라우저가 삼성 인터넷이면 설치 창을 띄울 수 없고 다크모드에서 색을 뒤집는다.
 // 저장소가 브라우저마다 따로라 오늘 점괘·랭킹 아이디를 주소에 실어 같은 사람으로 이어지게 한다.
-const CARRY_KEYS = [STORE_KEY, PLAYER_KEY, ENDLESS_KEY], PLANT_HASH = "#plant=";
+// intent 주소는 # 뒤를 Intent 설정으로 쓰므로 값은 검색어로 싣는다.
+const CARRY_KEYS = [STORE_KEY, PLAYER_KEY, ENDLESS_KEY], PLANT_PARAM = "plant";
+const isAndroid = /Android/i.test(navigator.userAgent);
 function openOutside() {
   const carry = Object.fromEntries(CARRY_KEYS.map(k => [k, localStorage.getItem(k)]).filter(([, v]) => v));
-  const url = `${location.origin}${location.pathname}${PLANT_HASH}${encodeURIComponent(JSON.stringify(carry))}`;
-  location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(url)}`;
+  const query = `?${PLANT_PARAM}=${encodeURIComponent(JSON.stringify(carry))}`;
+  location.href = isAndroid
+    ? `intent://${location.host}${location.pathname}${query}#Intent;scheme=https;package=com.android.chrome;end`
+    : `kakaotalk://web/openExternal?url=${encodeURIComponent(location.origin + location.pathname + query)}`;
 }
 // 넘어온 주소면 실어 온 값을 저장하고 주소를 지운다. 이미 설치한 사람에게는 심기 화면을 띄우지 않는다.
 function takePlant() {
-  if (!location.hash.startsWith(PLANT_HASH)) return false;
+  const raw = new URLSearchParams(location.search).get(PLANT_PARAM);
+  if (raw === null) return false;
   try {
-    const carry = JSON.parse(decodeURIComponent(location.hash.slice(PLANT_HASH.length)));
+    const carry = JSON.parse(raw);
     CARRY_KEYS.forEach(k => { if (typeof carry[k] === "string") localStorage.setItem(k, carry[k]); });
   } catch {}
-  history.replaceState(null, "", location.pathname + location.search);
+  history.replaceState(null, "", location.pathname);
   return !installed();
 }
 let planted = false;
