@@ -2411,7 +2411,6 @@ function showPlant() {
   addRect(art, 8, soil, w - 16, 1, "var(--outline)");
   [[7, 2], [12, 4], [19, 2], [23, 5], [4, 6], [16, 6], [27, 6]].forEach(([x, y]) => addRect(art, x, soil + y, 2, 1, "var(--cap)"));
   document.body.classList.add("planting");
-  setTimeout(() => sendInfo("plant"), 3000);
   $("plant").hidden = false;
   renderPlant();
 }
@@ -2420,7 +2419,6 @@ function openGuide() {
   $("guide-ios").hidden = !isIos;
   $("guide-menu").hidden = isIos;
   $("install-guide").showModal();
-  sendInfo("guide");
 }
 $("plant-go").addEventListener("click", async () => {
   if (!installPrompt) return openGuide();
@@ -2565,24 +2563,6 @@ else {
 }
 if (planting) showPlant();
 
-// 캡처를 옮기기 어려울 때 랭킹 서버 로그로 같은 내용을 받아 본다. 서버는 404 로 답하고 아무것도 저장하지 않는다.
-function sendInfo(at) {
-  const q = new URLSearchParams({ at, dark: matchMedia("(prefers-color-scheme: dark)").matches, prompt: !!installPrompt, standalone: installed() });
-  fetch(`${RANK_API}/info?${q}`, { mode: "no-cors" }).catch(() => {});
-}
-// 휴대폰에서 문제를 볼 때 #info 로 열면 브라우저와 화면 설정을 띄운다.
-if (location.hash === "#info") setTimeout(() => {
-  const box = document.createElement("pre");
-  box.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:9;margin:0;padding:8px;font:12px/1.5 monospace;white-space:pre-wrap;word-break:break-all;background:#fff;color:#000;border:2px solid #000";
-  box.textContent = [
-    `브라우저: ${navigator.userAgent}`,
-    `다크모드: ${matchMedia("(prefers-color-scheme: dark)").matches ? "켜짐" : "꺼짐"}`,
-    `설치 창: ${installPrompt ? "띄울 수 있음" : "띄울 수 없음"}`,
-    `홈 화면에서 실행: ${installed() ? "예" : "아니요"}`,
-  ].join("\n");
-  document.body.append(box);
-  sendInfo("info");
-}, 3000);
 </script>
 </body>
 </html>
