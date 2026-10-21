@@ -13,6 +13,11 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="도토리 점괘">
+<meta name="theme-color" content="#D9E4C2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18210F" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
 <style>
   :root {
@@ -425,9 +430,43 @@
   .share-note { margin: var(--gap-s) 0 0; color: var(--ink-soft); }
   .tool.endless-go { background: var(--cap); color: var(--on-dark); }
   .tool.endless-go:hover { background: var(--cap-light); }
+  /* 점괘를 받은 뒤 제목 위로 잠깐 내려와 하단 버튼을 가리지 않는다. */
+  .install-toast {
+    position: fixed;
+    left: 50%; top: calc(var(--gap-m) + env(safe-area-inset-top));
+    z-index: 5;
+    width: var(--toast-w, max-content);
+    display: flex;
+    align-items: center;
+    gap: var(--gap-s);
+    padding: var(--gap-s) var(--gap-s) var(--gap-s) var(--gap-m);
+    color: var(--ink);
+    background: var(--paper);
+    text-align: left;
+    transform: translateX(-50%);
+  }
+  .install-toast[hidden] { display: none; }
+  .install-toast p { flex: 1; margin: 0; font-size: 16px; white-space: nowrap; }
+  .install-toast .tool { flex: none; }
+  .install-toast button[hidden], .install-toast svg[hidden] { display: none; }
+  .toast-icon { flex: none; width: 20px; height: 24px; }
+  .toast-close { flex: none; padding: 0; font: inherit; font-size: 22px; color: var(--ink-soft); background: none; border: 0; cursor: pointer; }
+  .toast-close:focus-visible { outline: var(--px) dashed var(--acorn); }
+  .install-guide {
+    width: min(340px, calc(100% - 2 * var(--gap-l)));
+    padding: var(--gap-l);
+    color: var(--ink);
+    background: var(--paper);
+    text-align: left;
+  }
+  .install-guide::backdrop { background: rgb(0 0 0 / .45); }
+  .install-guide h2 { font-family: var(--font-mid); font-weight: 400; font-size: 22px; margin: 0 0 var(--gap-m); }
+  .install-guide ol { margin: 0; padding-left: 1.4em; line-height: 1.8; }
+  .install-guide .share-icon { width: 22px; height: auto; vertical-align: -4px; margin: 0 2px; }
+  .install-guide .actions { margin-top: var(--gap-l); }
 
   /* 무한 도토리는 점괘 화면을 걷고 첫 화면처럼 무대와 게이지만 둔다. */
-  .endless .lead, .endless .legend, .endless .result, .endless #actions, .endless .share-note { display: none; }
+  .endless .lead, .endless .legend, .endless .result, .endless #actions, .endless .share-note, .endless .install-toast { display: none; }
   .endless-hud { margin: 0; font-family: var(--font-mid); font-size: 20px; }
   .endless-hud[hidden], .endless-over[hidden], button.roll[hidden], .rank-form[hidden] { display: none; }
   .endless-over {
@@ -523,6 +562,20 @@
   </div>
 
   <button class="roll" id="roll" type="button">두드리기</button>
+  <div class="install-toast pixel-box" id="install-toast" role="status" hidden>
+    <span id="install-icon"></span>
+    <p id="install-text"></p>
+    <button class="tool endless-go pixel-box" id="install" type="button">심기</button>
+    <button class="toast-close" id="install-close" type="button" aria-label="닫기">×</button>
+  </div>
+  <dialog class="install-guide pixel-box" id="install-guide">
+    <h2>홈 화면에 추가하기</h2>
+    <ol>
+      <li>화면 아래 <span id="share-icon"></span> 공유 버튼을 눌러요.</li>
+      <li>'홈 화면에 추가'를 골라요.</li>
+    </ol>
+    <form class="actions" method="dialog"><button class="tool pixel-box">닫기</button></form>
+  </dialog>
 
   <section class="result pixel-box" id="result" hidden aria-live="polite">
     <div class="result-main">
@@ -1460,6 +1513,7 @@ function showResult({ fortune, lucky, careful, taps }) {
   document.getElementById("result-type").textContent = acornType.name;
   document.getElementById("grade").textContent = verticalText(grade);
   paintStrip(document.getElementById("grade").parentElement, grade);
+  installToast();
   document.getElementById("title").textContent = title;
   document.getElementById("body").textContent = body;
   document.getElementById("skill").textContent = `${taps}번, ${skillLabel(taps)}`;
@@ -2220,6 +2274,77 @@ $("rank-kakao").addEventListener("click", kakaoRankShare);
 $("rank-copy").addEventListener("click", copyRanking);
 
 rollBtn.addEventListener("click", hit);
+
+/* ---------- 홈 화면에 추가 ---------- */
+
+// 안드로이드·PC 는 브라우저 설치 창을 토스트 버튼으로만 띄우고, 아이폰은 창을 띄울 수 없어 공유 메뉴를 안내한다.
+// 앱 안 브라우저는 홈 화면에 추가할 수 없어 토스트를 띄우지 않는다.
+const SHARE_ICON = ["....X....", "...XXX...", "..X.X.X..", "....X....", "....X....", "XX..X..XX", "X.......X", "X.......X", "X.......X", "XXXXXXXXX"];
+const installed = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const inAppBrowser = /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(navigator.userAgent);
+let installPrompt = null;
+{
+  const svg = svgEl(SHARE_ICON[0].length, SHARE_ICON.length, "share-icon");
+  svg.setAttribute("viewBox", `0 0 ${SHARE_ICON[0].length} ${SHARE_ICON.length}`);
+  SHARE_ICON.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === "X") addRect(svg, x, y, 1, 1, "var(--ink)"); }));
+  $("share-icon").replaceWith(svg);
+  const acorn = svgEl(GRID_W, GRID_H, "toast-icon");
+  acorn.setAttribute("viewBox", `0 0 ${GRID_W} ${GRID_H}`);
+  acorn.id = "install-icon";
+  WHOLE.forEach((row, y) => row.forEach((c, x) => { if (c) addRect(acorn, x, y, 1, 1, `var(${COLORS[c]})`); }));
+  $("install-icon").replaceWith(acorn);
+}
+// 토스트는 기기마다 최대 TOAST_DAYS 날만 띄우고, 닫거나 추가하면 다시 띄우지 않는다.
+const INSTALL_KEY = "acorn-fortune-install", TOAST_DELAY_MS = 1200, TOAST_SHOW_MS = 5000, DONE_SHOW_MS = 3000, TOAST_DAYS = 3;
+const INSTALL_ASK = "홈 화면에 도토리 심을까요?", INSTALL_DONE = "홈 화면에 도토리를 심었어요";
+const canInstall = () => !installed() && (installPrompt || (isIos && !inAppBrowser));
+let toastTimer = 0;
+function hideToast(forever) {
+  clearTimeout(toastTimer);
+  $("install-toast").hidden = true;
+  if (forever) saveJson(INSTALL_KEY, { ...loadJson(INSTALL_KEY), off: true });
+}
+function showToast(text, withButtons, ms) {
+  const toast = $("install-toast"), card = $("result").getBoundingClientRect();
+  $("install-text").textContent = text;
+  $("install").hidden = $("install-close").hidden = !withButtons;
+  $("install-icon").toggleAttribute("hidden", withButtons);
+  // 점괘 카드와 같은 폭·같은 가로 위치에 맞춘다. 넓은 화면에서는 카드가 오른쪽 칸에 있다.
+  // 주소창 아이콘으로 설치하면 카드가 아직 없을 수 있어 그때는 글자 폭으로 가운데에 띄운다.
+  toast.style.setProperty("--toast-w", card.width ? `${card.width}px` : "max-content");
+  toast.style.left = card.width ? `${card.left + card.width / 2}px` : "";
+  toast.hidden = false;
+  if (!reduceMotion) toast.animate(stepped([-24, -12, -4, 0].map(y => ({ translate: `0 ${y}px`, opacity: y ? 0.5 : 1 }))), { duration: 240 });
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => hideToast(false), ms);
+}
+async function installToast() {
+  const seen = loadJson(INSTALL_KEY) ?? {};
+  const days = seen.days ?? [];
+  if (seen.off || days.includes(todayKey()) || days.length >= TOAST_DAYS) return;
+  await wait(TOAST_DELAY_MS);
+  if (!canInstall() || document.body.classList.contains("endless")) return;
+  saveJson(INSTALL_KEY, { ...seen, days: [...days, todayKey()] });
+  showToast(INSTALL_ASK, true, TOAST_SHOW_MS);
+}
+addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  installPrompt = e;
+});
+// 설치 창에서 '설치'를 눌러 아이콘이 생기면 알린다. 아이폰은 설치 여부를 알 수 없어 띄우지 않는다.
+addEventListener("appinstalled", () => {
+  installPrompt = null;
+  hideToast(true);
+  if (!document.body.classList.contains("endless")) showToast(INSTALL_DONE, false, DONE_SHOW_MS);
+});
+$("install-close").addEventListener("click", () => hideToast(true));
+$("install").addEventListener("click", async () => {
+  if (!installPrompt) { hideToast(true); return $("install-guide").showModal(); }
+  installPrompt.prompt();
+  const { outcome } = await installPrompt.userChoice;
+  if (outcome === "accepted") { installPrompt = null; hideToast(true); }
+});
 stage.addEventListener("click", hit);
 addEventListener("keydown", e => {
   if (e.code === "Space" && e.target === document.body) { e.preventDefault(); hit(); }
