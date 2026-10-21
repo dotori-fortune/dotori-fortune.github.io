@@ -16,7 +16,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="도토리 점괘">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="only light">
 <meta name="theme-color" content="#D9E4C2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#18210F" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
@@ -75,8 +75,10 @@
     --font-mid: "Galmuri11", "Noto Sans KR", "Malgun Gothic", sans-serif;
     --font-title: "Galmuri14", "Galmuri11", "Noto Sans KR", sans-serif;
   }
+  /* 브라우저가 다크모드라고 알리지 않으면서 색을 뒤집는 경우가 있어 라이트는 only 로 막는다. */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
+      color-scheme: dark;
       --bg: #18210F;
       --ink: #E4ECD2;
       --ink-soft: #9FAE86;
