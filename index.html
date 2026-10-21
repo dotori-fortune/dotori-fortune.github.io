@@ -16,6 +16,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="도토리 점괘">
+<meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#D9E4C2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#18210F" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
@@ -472,10 +473,6 @@
   .plant-lead { margin: 0; }
   .plant .tool { margin: var(--gap-s) 0 0; }
   .plant-go { font-family: var(--font-mid); font-size: 22px; padding: var(--gap-s) var(--gap-l); }
-  .plant-steps { width: min(100%, 340px); box-sizing: border-box; margin: var(--gap-s) 0 0; padding: var(--gap-m) var(--gap-m) var(--gap-m) calc(var(--gap-m) + 1.4em); background: var(--paper); text-align: left; }
-  .plant-steps[hidden], .plant-menu[hidden] { display: none; }
-  .plant-steps .share-icon { width: 22px; height: auto; vertical-align: -4px; margin: 0 2px; }
-  .plant-menu { margin: var(--gap-s) 0 0; color: var(--ink-soft); }
 
   /* 무한 도토리는 점괘 화면을 걷고 첫 화면처럼 무대와 게이지만 둔다. */
   .endless .lead, .endless .legend, .endless .result, .endless #actions, .endless .share-note, .endless .install-toast { display: none; }
@@ -580,14 +577,6 @@
     <button class="tool endless-go pixel-box" id="install" type="button">심기</button>
     <button class="toast-close" id="install-close" type="button" aria-label="닫기">×</button>
   </div>
-  <dialog class="install-guide pixel-box" id="install-guide">
-    <h2>홈 화면에 추가하기</h2>
-    <ol>
-      <li>화면 아래 <span class="share-slot"></span> 공유 버튼을 눌러요.</li>
-      <li>'홈 화면에 추가'를 골라요.</li>
-    </ol>
-    <form class="actions" method="dialog"><button class="tool pixel-box">닫기</button></form>
-  </dialog>
 
   <section class="result pixel-box" id="result" hidden aria-live="polite">
     <div class="result-main">
@@ -641,12 +630,19 @@
   <h2 id="plant-title"></h2>
   <p class="plant-lead" id="plant-lead"></p>
   <button class="tool endless-go pixel-box plant-go" id="plant-go" type="button" hidden>홈 화면에 심기</button>
-  <ol class="plant-steps pixel-box" id="plant-ios" hidden>
+</main>
+<dialog class="install-guide pixel-box" id="install-guide">
+  <h2>홈 화면에 추가하기</h2>
+  <ol id="guide-ios">
     <li>화면 아래 <span class="share-slot"></span> 공유 버튼을 눌러요.</li>
     <li>'홈 화면에 추가'를 골라요.</li>
   </ol>
-  <p class="plant-menu" id="plant-menu" hidden>브라우저 메뉴에서 '홈 화면에 추가'를 골라요.</p>
-</main>
+  <ol id="guide-menu">
+    <li>브라우저 메뉴(⋮ 또는 ≡)를 눌러요.</li>
+    <li>'홈 화면에 추가'나 '앱 설치'를 골라요.</li>
+  </ol>
+  <form class="actions" method="dialog"><button class="tool pixel-box">닫기</button></form>
+</dialog>
 
 <script>
 const PX = 4;
@@ -2369,7 +2365,7 @@ addEventListener("beforeinstallprompt", e => {
 
 // 카카오톡 브라우저는 홈 화면에 추가할 수 없어 기본 브라우저로 넘긴다.
 // 저장소가 브라우저마다 따로라 오늘 점괘·랭킹 아이디를 주소에 실어 같은 사람으로 이어지게 한다.
-const CARRY_KEYS = [STORE_KEY, PLAYER_KEY, ENDLESS_KEY], PLANT_HASH = "#plant=", PLANT_WAIT_MS = 1500;
+const CARRY_KEYS = [STORE_KEY, PLAYER_KEY, ENDLESS_KEY], PLANT_HASH = "#plant=";
 function openOutside() {
   const carry = Object.fromEntries(CARRY_KEYS.map(k => [k, localStorage.getItem(k)]).filter(([, v]) => v));
   const url = `${location.origin}${location.pathname}${PLANT_HASH}${encodeURIComponent(JSON.stringify(carry))}`;
@@ -2385,14 +2381,12 @@ function takePlant() {
   history.replaceState(null, "", location.pathname + location.search);
   return !installed();
 }
-let plantWaited = false, planted = false;
+let planted = false;
 function renderPlant() {
   if ($("plant").hidden) return;
   $("plant-title").textContent = planted ? "도토리를 심었어요" : "홈 화면에 도토리 심기";
   $("plant-lead").textContent = planted ? "이제 홈 화면의 도토리를 누르면 바로 열려요." : "한 번 심어 두면 다음부터는 홈 화면에서 바로 열 수 있어요.";
-  $("plant-go").hidden = planted || !installPrompt;
-  $("plant-ios").hidden = planted || !isIos;
-  $("plant-menu").hidden = planted || isIos || !!installPrompt || !plantWaited;
+  $("plant-go").hidden = planted;
 }
 function showPlant() {
   const bottom = WHOLE.findLastIndex(row => row.some(Boolean));
@@ -2411,9 +2405,15 @@ function showPlant() {
   document.body.classList.add("planting");
   $("plant").hidden = false;
   renderPlant();
-  setTimeout(() => { plantWaited = true; renderPlant(); }, PLANT_WAIT_MS);
+}
+// 설치 창을 띄울 수 없는 브라우저(아이폰, 처음 연 사이트를 아직 허락하지 않은 Chrome 등)는 직접 추가하는 방법을 연다.
+function openGuide() {
+  $("guide-ios").hidden = !isIos;
+  $("guide-menu").hidden = isIos;
+  $("install-guide").showModal();
 }
 $("plant-go").addEventListener("click", async () => {
+  if (!installPrompt) return openGuide();
   installPrompt.prompt();
   if ((await installPrompt.userChoice).outcome === "accepted") installPrompt = null;
 });
@@ -2429,7 +2429,7 @@ addEventListener("appinstalled", () => {
 $("install-close").addEventListener("click", () => hideToast(true));
 $("install").addEventListener("click", async () => {
   if (isKakao) { hideToast(false); return openOutside(); }
-  if (!installPrompt) { hideToast(true); return $("install-guide").showModal(); }
+  if (!installPrompt) { hideToast(true); return openGuide(); }
   installPrompt.prompt();
   const { outcome } = await installPrompt.userChoice;
   if (outcome === "accepted") { installPrompt = null; hideToast(true); }
