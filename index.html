@@ -1448,7 +1448,7 @@ function todayKey() {
 // 저장소가 막힌 환경(시크릿 창 등)에서는 저장 없이 그냥 깬다.
 function loadToday() {
   try {
-    if (location.hash === "#reset") localStorage.removeItem(STORE_KEY);
+    if (location.hash === "#reset") [STORE_KEY, INSTALL_KEY].forEach(k => localStorage.removeItem(k));
     const saved = JSON.parse(localStorage.getItem(STORE_KEY));
     return saved?.date === todayKey() && Number.isInteger(saved.fortune) ? saved : null;
   } catch { return null; }
@@ -2322,12 +2322,13 @@ let installPrompt = null;
   $("install-icon").replaceWith(acorn);
 }
 // 토스트는 기기마다 최대 TOAST_DAYS 날만 띄우고, 닫거나 추가하면 다시 띄우지 않는다.
-const INSTALL_KEY = "acorn-fortune-install", TOAST_DELAY_MS = 1200, TOAST_SHOW_MS = 5000, DONE_SHOW_MS = 3000, TOAST_DAYS = 3;
+const INSTALL_KEY = "acorn-fortune-install", TOAST_DELAY_MS = 1200, DONE_SHOW_MS = 3000, TOAST_DAYS = 3;
 const INSTALL_ASK = "홈 화면에 도토리 심을까요?", INSTALL_DONE = "홈 화면에 도토리를 심었어요";
 const canInstall = () => !installed() && (installPrompt || isKakao || (isIos && !inAppBrowser));
-let toastTimer = 0;
+let toastTimer = 0, toastWatch = null;
 function hideToast(forever) {
   clearTimeout(toastTimer);
+  toastWatch?.abort();
   $("install-toast").hidden = true;
   if (forever) saveJson(INSTALL_KEY, { ...loadJson(INSTALL_KEY), off: true });
 }
@@ -2343,7 +2344,13 @@ function showToast(text, withButtons, ms) {
   toast.hidden = false;
   if (!reduceMotion) toast.animate(stepped([-24, -12, -4, 0].map(y => ({ translate: `0 ${y}px`, opacity: y ? 0.5 : 1 }))), { duration: 240 });
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => hideToast(false), ms);
+  toastWatch?.abort();
+  if (ms) { toastTimer = setTimeout(() => hideToast(false), ms); return; }
+  // 묻는 토스트는 시간으로 닫지 않는다. 점괘를 읽는 동안 남아 있다가 다른 곳을 만지거나 스크롤하면 닫힌다.
+  toastWatch = new AbortController();
+  const { signal } = toastWatch;
+  addEventListener("pointerdown", e => { if (!toast.contains(e.target)) hideToast(false); }, { signal });
+  addEventListener("scroll", () => hideToast(false), { signal, passive: true });
 }
 async function installToast() {
   const seen = loadJson(INSTALL_KEY) ?? {};
@@ -2352,7 +2359,7 @@ async function installToast() {
   await wait(TOAST_DELAY_MS);
   if (!canInstall() || document.body.classList.contains("endless") || document.body.classList.contains("planting")) return;
   saveJson(INSTALL_KEY, { ...seen, days: [...days, todayKey()] });
-  showToast(INSTALL_ASK, true, TOAST_SHOW_MS);
+  showToast(INSTALL_ASK, true, 0);
 }
 addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
