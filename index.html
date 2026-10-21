@@ -68,6 +68,7 @@
     --kakao-hover: #F2D900;
     --on-kakao: #191600;
     --gap-s: 8px;
+    --sound-size: 44px;
     --gap-m: 16px;
     --gap-l: 32px;
     --stage-max: 760px;
@@ -432,6 +433,11 @@
   .tool[aria-disabled="true"] { opacity: .45; pointer-events: none; }
   .share-note { margin: var(--gap-s) 0 0; color: var(--ink-soft); }
   .tool.endless-go { background: var(--cap); color: var(--on-dark); }
+  /* 소리 단추는 본문 칸 오른쪽 위에 두고, 좁은 화면에서 제목과 겹치지 않게 그만큼 위를 비운다. */
+  main:has(> .sound) { position: relative; padding-top: calc(var(--sound-size) + var(--gap-m) + var(--gap-s)); }
+  .tool.sound { position: absolute; top: var(--gap-m); right: var(--gap-m); width: var(--sound-size); height: var(--sound-size); padding: 0; margin: 0; display: grid; place-items: center; }
+  .sound svg { width: 24px; height: auto; }
+  .planting .sound { display: none; }
   .tool.endless-go:hover { background: var(--cap-light); }
   /* 점괘를 받은 뒤 제목 위로 잠깐 내려와 하단 버튼을 가리지 않는다. */
   .install-toast {
@@ -559,6 +565,7 @@
 </head>
 <body>
 <main>
+  <button class="tool pixel-box sound" id="sound" type="button"></button>
   <h1>도토리 점괘</h1>
   <p class="lead">하루 한 번, 도토리를 깨서 속에 든 점괘를 꺼내요.</p>
   <p class="endless-hud" id="endless-hud" hidden aria-live="polite"></p>
@@ -1288,6 +1295,7 @@ async function split() {
   wholeSvg.style.display = crackSvg.style.display = "none";
   leftSvg.style.display = rightSvg.style.display = "";
   setShadows([]);
+  sfx("split");
   const mid = stage.clientWidth / 2;
   burst("final", mid, acornTop() + 12 * CELL);
   if (isGolden()) {
@@ -1471,6 +1479,7 @@ async function hit() {
   hp = Math.min(acornType.hp, hp + DAMAGE[kind]);
   popText(kind);
   impact(kind);
+  sfx(kind);
   drawCrack(crackLevel());
   // 무한 도토리는 맞히면 바로 쪼개지므로 흔들림을 건너뛴다.
   if (!endless || kind === "miss") await shake(kind);
@@ -1661,6 +1670,7 @@ function startEndless() {
 async function popAcorn() {
   await crackGlow(ENDLESS_GLOW_MS);
   showSplitAcorn();
+  sfx("split");
   const mid = stage.clientWidth / 2;
   burst("final", mid, acornTop() + 12 * CELL);
   if (isGolden()) {
@@ -2320,6 +2330,72 @@ let installPrompt = null;
   $("install-icon").replaceWith(acorn);
 }
 // 토스트는 기기마다 최대 TOAST_DAYS 날만 띄우고, 닫거나 추가하면 다시 띄우지 않는다.
+// 효과음은 파일 없이 그 자리에서 8비트 소리로 만든다. 판정마다 높이와 세기를 달리한다.
+const SOUND_KEY = "acorn-fortune-sound";
+const SPEAKER_ON = ["....X.......", "...XX....X..", "..XXX..X..X.", "XXXXX...X..X", "XXXXX...X..X", "XXXXX...X..X", "XXXXX...X..X", "..XXX..X..X.", "...XX....X..", "....X......."];
+const SPEAKER_OFF = ["....X.......", "...XX.......", "..XXX.......", "XXXXX.X...X.", "XXXXX..X.X..", "XXXXX...X...", "XXXXX..X.X..", "..XXX.X...X.", "...XX.......", "....X......."];
+let soundOn = localStorage.getItem(SOUND_KEY) === "on", audio = null;
+function renderSound() {
+  const icon = soundOn ? SPEAKER_ON : SPEAKER_OFF;
+  const svg = svgEl(icon[0].length, icon.length);
+  svg.setAttribute("viewBox", `0 0 ${icon[0].length} ${icon.length}`);
+  icon.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === "X") addRect(svg, x, y, 1, 1, "var(--ink)"); }));
+  $("sound").replaceChildren(svg);
+  $("sound").setAttribute("aria-label", soundOn ? "소리 끄기" : "소리 켜기");
+  $("sound").setAttribute("aria-pressed", soundOn);
+}
+function ensureAudio() {
+  // 아이폰 무음 모드에서는 소리가 나지 않게 한다.
+  if (navigator.audioSession) navigator.audioSession.type = "ambient";
+  audio ??= new AudioContext();
+  if (audio.state === "suspended") audio.resume();
+  return audio;
+}
+function tone(type, f1, f2, t, dur, peak) {
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f1, t);
+  if (f2 !== f1) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(audio.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function hiss(t, dur, peak, type, f1, f2 = f1) {
+  const buf = audio.createBuffer(1, Math.ceil(audio.sampleRate * dur), audio.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = audio.createBufferSource(), bq = audio.createBiquadFilter(), g = audio.createGain();
+  src.buffer = buf; bq.type = type;
+  bq.frequency.setValueAtTime(f1, t);
+  if (f2 !== f1) bq.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(peak, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bq).connect(g).connect(audio.destination);
+  src.start(t);
+}
+const SFX = {
+  perfect: t => { tone("square", 880, 220, t, 0.12, 0.18); hiss(t, 0.05, 0.25, "highpass", 3000); },
+  good: t => tone("square", 520, 200, t, 0.09, 0.12),
+  miss: t => tone("triangle", 220, 110, t, 0.14, 0.2),
+  split: t => {
+    hiss(t, 0.18, 0.35, "lowpass", 4000, 400);
+    [523, 659, 784, 1047].forEach((f, i) => tone("square", f, f, t + 0.12 + i * 0.07, 0.09, 0.1));
+  },
+};
+function sfx(kind) {
+  if (!soundOn) return;
+  ensureAudio();
+  SFX[kind](audio.currentTime + 0.01);
+}
+$("sound").addEventListener("click", () => {
+  soundOn = !soundOn;
+  localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+  renderSound();
+  sfx("good");
+});
+renderSound();
+
 const INSTALL_KEY = "acorn-fortune-install", TOAST_DELAY_MS = 1200, DONE_SHOW_MS = 3000, TOAST_DAYS = 2;
 const INSTALL_ASK = "홈에 도토리를 심을까요?", INSTALL_DONE = "홈 화면에 도토리를 심었어요";
 const canInstall = () => !installed() && (installPrompt || isKakao || (isIos && !inAppBrowser));
