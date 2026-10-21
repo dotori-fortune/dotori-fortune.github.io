@@ -2568,6 +2568,9 @@ if (location.hash === "#info") setTimeout(() => {
     `홈 화면에서 실행: ${installed() ? "예" : "아니요"}`,
   ].join("\n");
   document.body.append(box);
+  // 캡처를 옮기기 어려울 때 랭킹 서버 로그로 같은 내용을 받아 본다. 서버는 404 로 답하고 아무것도 저장하지 않는다.
+  const q = new URLSearchParams({ dark: matchMedia("(prefers-color-scheme: dark)").matches, prompt: !!installPrompt, standalone: installed() });
+  fetch(`${RANK_API}/info?${q}`, { mode: "no-cors" }).catch(() => {});
 }, 3000);
 </script>
 </body>
