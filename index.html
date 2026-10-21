@@ -49,9 +49,14 @@
     --drop: rgba(36, 48, 26, .35);
     /* 쪽지는 테마와 관계없이 밝은 종이에 먹 글씨로 둔다. */
     --slip-paper: #FFF4D6;
+    --slip-paper-heaven: #2B1C0E;
+    --slip-line-heaven: var(--crown);
+    --slip-paper-careful: #F6D3C8;
+    --slip-line-careful: #8C2F2A;
     --slip-ink: #2B1C0E;
     --slip-line: #8E4D1E;
     --crown: #F2C14E;
+    --acorn-hi-gold: #FFF1C2;
     --seal: #B8432C;
     --kakao: #FEE500;
     --kakao-hover: #F2D900;
@@ -187,6 +192,46 @@
     box-shadow: 0 var(--px) 0 0 var(--slip-line);
   }
   .strip-head:empty { display: none; }
+  .strip.heaven { --slip-paper: var(--slip-paper-heaven); --slip-line: var(--slip-line-heaven); --slip-ink: var(--crown); --seal: var(--crown); }
+  .strip.careful { --slip-paper: var(--slip-paper-careful); --slip-line: var(--slip-line-careful); }
+  /* 천운만 테두리를 두 줄로 두르고 모서리에 별을 단다. */
+  .strip.heaven {
+    box-shadow:
+      inset 0 0 0 var(--frame) var(--slip-paper),
+      inset 0 0 0 calc(var(--frame) + var(--px)) var(--slip-line),
+      inset 0 0 0 calc(var(--frame) + 2 * var(--px)) var(--slip-paper),
+      inset 0 0 0 calc(var(--frame) + 3 * var(--px)) var(--slip-line),
+      0 calc(-1 * var(--px)) 0 0 var(--outline),
+      calc(-1 * var(--px)) 0 0 0 var(--outline),
+      var(--px) 0 0 0 var(--outline);
+  }
+  /* 별은 띠 바깥 모서리에 반쯤 걸쳐 글자·도장과 겹치지 않게 한다. */
+  .strip-star { position: absolute; width: var(--star); height: auto; --star: calc(var(--strip-w) * .22); --off: calc(var(--star) / -2); }
+  .strip-star.tr { top: var(--off); right: var(--off); }
+  .strip-star.bl { bottom: var(--off); left: var(--off); }
+  /* 빛도 번지지 않게 한 칸(--glow) 단위로 밝은 금색·금색 테두리를 두 겹 두른다. */
+  .acorn.golden svg:not(.crack) {
+    --ring-in: drop-shadow(var(--glow) 0 0 var(--acorn-hi-gold)) drop-shadow(calc(-1 * var(--glow)) 0 0 var(--acorn-hi-gold)) drop-shadow(0 var(--glow) 0 var(--acorn-hi-gold)) drop-shadow(0 calc(-1 * var(--glow)) 0 var(--acorn-hi-gold));
+    --ring-out: drop-shadow(var(--glow) 0 0 var(--crown)) drop-shadow(calc(-1 * var(--glow)) 0 0 var(--crown)) drop-shadow(0 var(--glow) 0 var(--crown)) drop-shadow(0 calc(-1 * var(--glow)) 0 var(--crown));
+    filter: var(--ring-in) var(--ring-out);
+  }
+  .strip-star { animation: star-pulse .9s steps(3) infinite alternate; }
+  .strip-star.bl { animation-delay: .45s; }
+  .strip-shine { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .strip-shine svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: calc(var(--shine-w) * var(--px)); height: calc(var(--shine-h) * var(--px));
+    mix-blend-mode: screen;
+    transform: translateX(-100%);
+    animation: strip-shine 2.6s steps(20) infinite;
+  }
+  @keyframes star-pulse { from { transform: scale(.6); } to { transform: scale(1.15); } }
+  @keyframes strip-shine { 0% { transform: translateX(-100%); } 55%, 100% { transform: translateX(var(--strip-w)); } }
+  @media (prefers-reduced-motion: reduce) {
+    .strip-star { animation: none; }
+    .strip-shine { display: none; }
+  }
   .strip-grade {
     padding: var(--gap-m) 0 12px;
     font-family: var(--font-title);
@@ -236,6 +281,23 @@
   .acorn.soft { --acorn-light: #EDB06A; --acorn: #D98A45; --acorn-dark: #A9632B; }
   .acorn.hard { --acorn-light: #B98552; --acorn: #8F5B2E; --acorn-dark: #603C1C; }
   .acorn.stubborn { --acorn-light: #E0864A; --acorn: #B8532A; --acorn-dark: #7E3417; }
+  .acorn.golden { --acorn-hi: var(--acorn-hi-gold); --acorn-light: #F9DA7A; --acorn: var(--crown); --acorn-dark: #B07D1C; }
+  /* 황금 도토리는 백 번에 한 번 나오므로 뒤에서 광선이 돌고 별이 반짝이게 한다. */
+  .aura { z-index: 1; pointer-events: none; display: none; }
+  .stage:has(.acorn.golden) .aura { display: block; }
+  .aura-rays { position: absolute; inset: 0; }
+  /* 픽셀 격자는 돌리면 칸이 기울어지므로, 미리 조금씩 돌려 그린 장면을 차례로 켠다. */
+  .aura-rays svg { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; animation: aura-frame var(--ray-cycle) steps(1) infinite; }
+  .aura-star { position: absolute; width: var(--aura-star); height: auto; opacity: 0; animation: aura-twinkle 1.8s steps(3) infinite; }
+  .acorn.golden { --glow: var(--cell); }
+  .gold-flash { position: fixed; inset: 0; z-index: 10; pointer-events: none; background: var(--crown); opacity: 0; }
+  @keyframes aura-frame { 0% { visibility: visible; } 25%, 100% { visibility: hidden; } }
+  @keyframes aura-twinkle { 0%, 100% { opacity: 0; transform: scale(.4); } 50% { opacity: 1; transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) {
+    .aura-rays svg, .aura-star { animation: none; }
+    .aura-rays svg:first-child { visibility: visible; }
+    .aura-star { opacity: 1; }
+  }
   .gauge .cursor {
     position: absolute;
     left: 0; top: -8px;
@@ -531,6 +593,9 @@ const ACORN_TYPES = [
   { id: "stubborn", name: "고집 센 도토리", hp: 5, zone: 0.8, speed: 1.05 },
   { id: "hard", name: "단단한 도토리", hp: 6, zone: 1, speed: 1 },
 ];
+// 천운인 날에만 나온다. 무작위 종류와 무한 도토리에는 섞지 않는다.
+const GOLDEN_ACORN = { id: "golden", name: "황금 도토리", hp: 3, zone: 1.25, speed: 0.8 };
+const acornById = id => [...ACORN_TYPES, GOLDEN_ACORN].find(t => t.id === id) ?? ACORN_TYPES[1];
 // 두 번째 타격부터 매번 하나를 뽑는다. 첫 타격과 steady 는 평소 게이지다.
 const GAUGE_MODES = {
   steady: "",
@@ -561,38 +626,75 @@ const COLORS = {
 const FORTUNES = [
   ["대길", "참나무 기운이 가득해요", "오늘은 뭘 해도 뿌리가 내리는 날이에요. 미뤄 둔 일을 시작하면 참나무처럼 오래 갑니다."],
   ["대길", "다람쥐가 부러워해요", "오늘 모은 건 오래 남아요. 작은 저축이나 메모 하나가 나중에 큰 도움이 됩니다."],
-  ["길", "술술 굴러가는 하루예요", "일이 대체로 술술 풀려요. 다만 옆 사람은 쉬고 싶어 하니 재촉하지 마세요."],
-  ["길", "칭찬이 굴러들어 와요", "뜻밖의 칭찬을 듣는 날이에요. 겸손하게 받으면 한 번 더 들어옵니다."],
-  ["길", "햇볕 잘 드는 날이에요", "밖에 나갈 일이 있다면 오늘 가세요. 걷다가 좋은 소식을 듣게 됩니다."],
+  ["중길", "술술 굴러가는 하루예요", "일이 대체로 술술 풀려요. 다만 옆 사람은 쉬고 싶어 하니 재촉하지 마세요."],
+  ["중길", "칭찬이 굴러들어 와요", "뜻밖의 칭찬을 듣는 날이에요. 겸손하게 받으면 한 번 더 들어옵니다."],
+  ["중길", "햇볕 잘 드는 날이에요", "밖에 나갈 일이 있다면 오늘 가세요. 걷다가 좋은 소식을 듣게 됩니다."],
   ["소길", "꾸준히 굴러가는 날이에요", "내 속도대로 가면 되는 날이에요. 오후에 작은 보상이 기다립니다."],
-  ["평", "느긋하게 흘러가요", "큰일 없이 지나가는 하루예요. 잃어버린 물건이 엉뚱한 데서 나올 수 있어요."],
-  ["쉼", "누워도 되는 날이에요", "오늘은 쉬어 가도 괜찮아요. 일찍 자면 내일 운이 두 배로 굴러옵니다."],
-  ["파격", "모자를 벗어 던질 때예요", "체면은 잠깐 내려놓으세요. 오늘은 솔직하게 말할수록 잘 통합니다."],
-  ["변화", "하나만 바꿔 보세요", "익숙한 걸 바꿔 보기 좋은 날이에요. 머리 모양이든 출근길이든 하나만 바꿔 보세요."],
-  ["묘", "갈림길이 셋이에요", "세 갈래 길이 다 열려 있는 날이에요. 고민되면 가장 재밌어 보이는 쪽을 고르세요."],
-  ["살핌", "주머니를 챙겨요", "나가기 전에 주머니를 한 번 확인하면 하루가 가벼워요. 빠뜨린 게 없으니 마음도 편합니다."],
+  ["소길", "느긋하게 흘러가요", "큰일 없이 지나가는 하루예요. 잃어버린 물건이 엉뚱한 데서 나올 수 있어요."],
+  ["조심", "누워도 되는 날이에요", "오늘은 쉬어 가도 괜찮아요. 일찍 자면 내일 운이 두 배로 굴러옵니다."],
+  ["중길", "모자를 벗어 던질 때예요", "체면은 잠깐 내려놓으세요. 오늘은 솔직하게 말할수록 잘 통합니다."],
+  ["소길", "하나만 바꿔 보세요", "익숙한 걸 바꿔 보기 좋은 날이에요. 머리 모양이든 출근길이든 하나만 바꿔 보세요."],
+  ["소길", "갈림길이 셋이에요", "세 갈래 길이 다 열려 있는 날이에요. 고민되면 가장 재밌어 보이는 쪽을 고르세요."],
+  ["소길", "주머니를 챙겨요", "나가기 전에 주머니를 한 번 확인하면 하루가 가벼워요. 빠뜨린 게 없으니 마음도 편합니다."],
   ["대길", "도토리가 꽉 찼어요", "준비한 만큼 결과가 나오는 날이에요. 오늘 내놓는 건 무엇이든 제값을 받습니다."],
   ["대길", "숲 전체가 내 편이에요", "부탁하면 다 들어주는 날이에요. 미뤄 둔 도움 요청을 오늘 꺼내 보세요."],
-  ["길", "주머니가 묵직해져요", "생각지 않은 데서 작은 이득이 생겨요. 쌓아 둔 포인트나 쿠폰을 한 번 확인해 보세요."],
-  ["길", "발걸음이 가벼운 날이에요", "몸이 먼저 움직이는 날이에요. 고민은 짧게 하고 일단 시작하면 잘 풀립니다."],
-  ["길", "좋은 소식이 굴러와요", "기다리던 연락이 오는 날이에요. 휴대폰을 무음으로 두지 마세요."],
-  ["길", "말 한마디가 잘 통해요", "오늘은 말이 잘 먹혀요. 하고 싶던 제안이 있다면 오늘 꺼내세요."],
+  ["중길", "주머니가 묵직해져요", "생각지 않은 데서 작은 이득이 생겨요. 쌓아 둔 포인트나 쿠폰을 한 번 확인해 보세요."],
+  ["중길", "발걸음이 가벼운 날이에요", "몸이 먼저 움직이는 날이에요. 고민은 짧게 하고 일단 시작하면 잘 풀립니다."],
+  ["중길", "좋은 소식이 굴러와요", "기다리던 연락이 오는 날이에요. 휴대폰을 무음으로 두지 마세요."],
+  ["중길", "말 한마디가 잘 통해요", "오늘은 말이 잘 먹혀요. 하고 싶던 제안이 있다면 오늘 꺼내세요."],
   ["소길", "작은 도토리도 도토리예요", "큰 성과는 없어도 하나씩 쌓이는 날이에요. 작은 일부터 끝내면 마음이 편해집니다."],
   ["소길", "볕이 한 줌 들어요", "하루 중에 잠깐 볕 드는 순간이 와요. 그때 잠깐 쉬어 가면 충분합니다."],
   ["소길", "점심이 맛있는 날이에요", "오늘의 행복은 밥상에 있어요. 처음 가 보는 식당을 골라도 실패하지 않습니다."],
-  ["평", "바람이 잔잔해요", "특별할 것 없는 하루지만 그래서 좋아요. 평소 하던 대로 하면 됩니다."],
-  ["평", "다람쥐도 낮잠 자는 날", "급한 일은 생각보다 급하지 않아요. 하나씩 차례대로 하면 저녁 전에 끝납니다."],
-  ["쉼", "굴을 따뜻하게 데워요", "밖보다 안이 좋은 날이에요. 약속을 줄이고 좋아하는 걸 하며 보내세요."],
-  ["쉼", "도토리는 땅속에서 자라요", "아무것도 안 하는 것 같아도 자라는 중이에요. 오늘은 조급해하지 않아도 됩니다."],
-  ["파격", "굴러가는 방향을 바꿔요", "늘 고르던 것 말고 반대쪽을 골라 보세요. 뜻밖의 재미가 기다립니다."],
-  ["변화", "새싹이 고개를 들어요", "새로 시작한 일에 첫 반응이 오는 날이에요. 작은 반응이라도 반갑게 받으세요."],
-  ["변화", "자리를 옮겨 보세요", "늘 앉던 자리를 바꾸면 생각도 바뀌어요. 막힌 일이 있다면 장소부터 바꿔 보세요."],
-  ["묘", "도토리가 두 알이에요", "같은 일이 두 번 일어나는 날이에요. 두 번째가 더 좋으니 처음에 바로 정하지 마세요."],
-  ["묘", "다람쥐가 지켜보고 있어요", "누군가 내 수고를 알아봐 주는 날이에요. 늘 하던 대로 하면 됩니다."],
-  ["살핌", "천천히 걸어요", "천천히 가도 늦지 않는 날이에요. 계단은 한 칸씩 내려가면 됩니다."],
-  ["살핌", "한 박자 쉬어요", "한 번 쉬었다 말하면 더 잘 전해지는 날이에요. 바로 답하지 않아도 괜찮아요."],
-  ["살핌", "일정을 훑어봐요", "아침에 일정을 한 번 훑어 두면 하루가 느긋해져요. 남는 시간도 생깁니다."],
+  ["소길", "바람이 잔잔해요", "특별할 것 없는 하루지만 그래서 좋아요. 평소 하던 대로 하면 됩니다."],
+  ["소길", "다람쥐도 낮잠 자는 날", "급한 일은 생각보다 급하지 않아요. 하나씩 차례대로 하면 저녁 전에 끝납니다."],
+  ["조심", "굴을 따뜻하게 데워요", "밖보다 안이 좋은 날이에요. 약속을 줄이고 좋아하는 걸 하며 보내세요."],
+  ["조심", "도토리는 땅속에서 자라요", "아무것도 안 하는 것 같아도 자라는 중이에요. 오늘은 조급해하지 않아도 됩니다."],
+  ["소길", "굴러가는 방향을 바꿔요", "늘 고르던 것 말고 반대쪽을 골라 보세요. 뜻밖의 재미가 기다립니다."],
+  ["중길", "새싹이 고개를 들어요", "새로 시작한 일에 첫 반응이 오는 날이에요. 작은 반응이라도 반갑게 받으세요."],
+  ["소길", "자리를 옮겨 보세요", "늘 앉던 자리를 바꾸면 생각도 바뀌어요. 막힌 일이 있다면 장소부터 바꿔 보세요."],
+  ["소길", "도토리가 두 알이에요", "같은 일이 두 번 일어나는 날이에요. 두 번째가 더 좋으니 처음에 바로 정하지 마세요."],
+  ["중길", "다람쥐가 지켜보고 있어요", "누군가 내 수고를 알아봐 주는 날이에요. 늘 하던 대로 하면 됩니다."],
+  ["조심", "천천히 걸어요", "천천히 가도 늦지 않는 날이에요. 계단은 한 칸씩 내려가면 됩니다."],
+  ["조심", "한 박자 쉬어요", "한 번 쉬었다 말하면 더 잘 전해지는 날이에요. 바로 답하지 않아도 괜찮아요."],
+  ["소길", "일정을 훑어봐요", "아침에 일정을 한 번 훑어 두면 하루가 느긋해져요. 남는 시간도 생깁니다."],
+  ["천운", "황금 도토리가 굴러왔어요", "백 번에 한 번 오는 날이에요. 마음먹은 일은 무엇이든 해 보세요. 숲이 길을 비켜 줍니다."],
+  ["천운", "숲에 금빛이 내려요", "운이 먼저 찾아오는 날이에요. 망설이던 일이 있다면 지금 꺼내세요. 생각보다 크게 돌아옵니다."],
+  ["천운", "오늘 운은 다 내 거예요", "평소라면 안 될 일도 되는 날이에요. 미뤄 둔 큰 결심을 오늘 정해 보세요."],
 ];
+// 저장된 기록은 점괘 번호만 들고 있으므로 새 점괘는 맨 뒤에만 붙인다.
+const GRADE_WEIGHTS = { 천운: 1, 대길: 14, 중길: 30, 소길: 40, 조심: 15 };
+// 띠 바탕색을 바꾸는 등급. 값은 클래스 이름이자 --slip-paper-* 토큰 이름이다.
+const GRADE_PAPER = { 천운: "heaven", 조심: "careful" };
+const STAR = ["..X..", "..X..", "XXXXX", "..X..", "..X.."];
+const STAR_CORNERS = ["tr", "bl"];
+// 천운 띠를 훑는 빛. 두 행마다 한 칸씩 밀린 계단 사선 두 줄이며, 띠보다 길게 그려 넘치는 쪽은 잘린다.
+const SHINE_ROWS = 96, SHINE_BANDS = [[0, 2, "var(--acorn-hi-gold)"], [3, 1, "var(--crown)"]];
+function shineSvg() {
+  const lean = SHINE_ROWS / 2, w = lean + 4;
+  const svg = svgEl(w, SHINE_ROWS);
+  svg.setAttribute("viewBox", `0 0 ${w} ${SHINE_ROWS}`);
+  svg.style.setProperty("--shine-w", w); svg.style.setProperty("--shine-h", SHINE_ROWS);
+  for (let y = 0; y < SHINE_ROWS; y++) {
+    const x0 = Math.floor((SHINE_ROWS - 1 - y) / 2);
+    for (const [dx, len, color] of SHINE_BANDS) addRect(svg, x0 + dx, y, len, 1, color);
+  }
+  return svg;
+}
+function paintStrip(el, grade) {
+  el.classList.remove(...Object.values(GRADE_PAPER));
+  el.querySelectorAll(".strip-star, .strip-shine").forEach(s => s.remove());
+  if (GRADE_PAPER[grade]) el.classList.add(GRADE_PAPER[grade]);
+  if (grade !== "천운") return;
+  const shine = Object.assign(document.createElement("div"), { className: "strip-shine" });
+  shine.append(shineSvg());
+  el.append(shine);
+  for (const corner of STAR_CORNERS) {
+    const svg = svgEl(STAR[0].length, STAR.length, `strip-star ${corner}`);
+    svg.setAttribute("viewBox", `0 0 ${STAR[0].length} ${STAR.length}`);
+    STAR.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === "X") addRect(svg, x, y, 1, 1, "var(--crown)"); }));
+    el.append(svg);
+  }
+}
 const LUCKY = ["따뜻한 보리차", "갈색 양말", "왼쪽 주머니", "도토리묵 한 접시", "두 번째 서랍", "점심 뒤 산책 15분", "둥근 머그잔", "창가 자리", "오래된 노래", "빵 끝부분",
   "노란 포스트잇", "따뜻한 군밤", "갓 구운 빵", "초록색 펜", "손글씨 메모", "창밖 구름", "단골 가게",
   "오후 3시", "줄무늬 옷", "작은 화분", "주머니 속 동전", "새 양말", "한 정거장 걷기", "점심 메뉴 2번",
@@ -841,7 +943,69 @@ function sizeAcorn() {
 const slip = document.createElement("div");
 slip.className = "slip strip";
 slip.hidden = true;
-stage.append(slip, acorn);
+// 광선과 가운데 빛을 도토리와 같은 칸 크기로 찍는다. 장면 수는 CSS aura-frame 의 25% 와 맞춘다.
+// 끝을 원 안쪽에서 끊어 게이지 글자를 덮지 않게 하고, 바깥으로 갈수록 칸을 성기게 찍는다.
+const RAY_COUNT = 8, RAY_FRAMES = 4, RAY_STEP_S = 0.3, RAY_REACH = 0.82;
+function raySvg(n, frame) {
+  const svg = svgEl(n, n);
+  svg.setAttribute("viewBox", `0 0 ${n} ${n}`);
+  const c = n / 2, gap = 2 * Math.PI / RAY_COUNT, turn = frame / RAY_FRAMES * gap;
+  const halo = n * (frame % 2 ? 0.2 : 0.17);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const dx = x + 0.5 - c, dy = y + 0.5 - c, r = Math.hypot(dx, dy);
+    const checker = (x + y) % 2 === 0;
+    if (r < halo) { addRect(svg, x, y, 1, 1, r < halo * 0.7 ? "var(--acorn-hi-gold)" : "var(--crown)"); continue; }
+    if (r > c * RAY_REACH) continue;
+    const d = ((Math.atan2(dy, dx) - turn) % gap + gap) % gap;
+    const side = r * Math.sin(Math.min(d, gap - d));
+    if (side > 0.6 + 1.4 * (1 - r / c)) continue;
+    if (r > c * 0.55 && !checker) continue;
+    if (r > c * 0.7 && x % 2) continue;
+    addRect(svg, x, y, 1, 1, r < c * 0.45 ? "var(--acorn-hi-gold)" : "var(--crown)");
+  }
+  return svg;
+}
+let rayCells = 0;
+function drawRays(n) {
+  if (n === rayCells) return;
+  rayCells = n;
+  aura.firstChild.replaceChildren(...Array.from({ length: RAY_FRAMES }, (_, i) => {
+    const svg = raySvg(n, i);
+    svg.style.animationDelay = `${-(RAY_FRAMES - i) * RAY_STEP_S}s`;
+    return svg;
+  }));
+}
+// 별 자리는 광선 원 둘레에 흩어 두고 반짝이는 때를 어긋나게 한다.
+const AURA_STARS = [[14, 18], [80, 12], [92, 58], [6, 64], [48, 2], [72, 86]];
+const aura = document.createElement("div");
+aura.className = "aura";
+aura.innerHTML = '<div class="aura-rays"></div>';
+aura.style.setProperty("--ray-cycle", `${RAY_FRAMES * RAY_STEP_S}s`);
+AURA_STARS.forEach(([x, y], i) => {
+  const svg = svgEl(STAR[0].length, STAR.length, "aura-star");
+  svg.setAttribute("viewBox", `0 0 ${STAR[0].length} ${STAR.length}`);
+  STAR.forEach((row, ry) => [...row].forEach((ch, rx) => { if (ch === "X") addRect(svg, rx, ry, 1, 1, rx === 2 && ry === 2 ? "var(--acorn-hi-gold)" : "var(--crown)"); }));
+  svg.style.left = `${x}%`; svg.style.top = `${y}%`;
+  svg.style.animationDelay = `${i * 0.3}s`;
+  aura.append(svg);
+});
+stage.append(aura, slip, acorn);
+
+const isGolden = () => acornType.id === GOLDEN_ACORN.id;
+
+function goldFlash() {
+  if (reduceMotion) return;
+  const f = document.createElement("div");
+  f.className = "gold-flash";
+  document.body.append(f);
+  f.animate(stepped([0.8, 0.5, 0.25, 0].map(opacity => ({ opacity }))), { duration: 480 }).finished.then(() => f.remove());
+}
+
+// 들어올 때와 깰 때 광선을 한 번 크게 펼친다.
+function auraSwell(scale) {
+  if (reduceMotion) return;
+  aura.firstChild.animate(stepped([0, 0.6, 1, 0.8].map(k => ({ scale: String(1 + (scale - 1) * k) })).concat({ scale: "1" })), { duration: 900 });
+}
 
 let shadows = [];
 let hp = 0, taps = 0, misses = 0, busy = false, today = null, acornType = ACORN_TYPES[1];
@@ -874,6 +1038,12 @@ function drawCrack(level) {
 
 function layoutAcorn() {
   acorn.style.transform = `translate(${acornLeft()}px, ${acornTop()}px)`;
+  const size = snap(SPRITE_W * (document.body.classList.contains("done") ? 1.5 : 2.4));
+  aura.style.width = aura.style.height = `${size}px`;
+  acorn.style.setProperty("--cell", `${CELL}px`);
+  drawRays(Math.round(size / CELL));
+  aura.style.setProperty("--aura-star", `${snap(CELL * 2.5)}px`);
+  aura.style.transform = `translate(${snap(stage.clientWidth / 2 - size / 2)}px, ${snap(acornTop() + SPRITE_H / 2 - size / 2)}px)`;
 }
 
 function resetAcorn() {
@@ -999,6 +1169,7 @@ function impact(kind) {
   burst(kind, x, y);
   particles(x, y, "--acorn-dark", big ? 5 : 2, 48);
   particles(x, y, "--acorn-hi", big ? 5 : 2, 64);
+  if (isGolden()) particles(x, y, "--crown", big ? 8 : 4, 96);
   if (big && !reduceMotion) {
     wholeSvg.animate(stepped([{ filter: "brightness(1.7)" }, { filter: "none" }]), { duration: 110 });
     quake(PX);
@@ -1045,6 +1216,12 @@ async function split() {
   setShadows([]);
   const mid = stage.clientWidth / 2;
   burst("final", mid, acornTop() + 12 * CELL);
+  if (isGolden()) {
+    goldFlash();
+    auraSwell(1.6);
+    particles(mid, acornTop() + 8 * CELL, "--crown", 16, 16 * CELL);
+    particles(mid, acornTop() + 8 * CELL, "--acorn-hi-gold", 10, 12 * CELL);
+  }
   quake(2 * PX);
   particles(mid, acornTop() + 12 * CELL, "--acorn-inner", 8, 10 * CELL);
   particles(mid, acornTop() + 4 * CELL, "--cap", 6, 8 * CELL);
@@ -1169,6 +1346,24 @@ const playing = () => !today || (endless && !endless.over);
 
 const STORE_KEY = "acorn-fortune";
 
+// 등급을 비율대로 고른 뒤 그 등급 안에서 고르게 뽑는다.
+function pickFortune(rnd) {
+  const grades = Object.entries(GRADE_WEIGHTS);
+  let r = rnd() * grades.reduce((sum, [, w]) => sum + w, 0);
+  const [grade] = grades.find(([, w]) => (r -= w) < 0) ?? grades.at(-1);
+  const ids = FORTUNES.flatMap(([g], i) => g === grade ? [i] : []);
+  return ids[Math.floor(rnd() * ids.length)];
+}
+
+// 날짜와 기기마다 고정해서 새로고침으로 황금 도토리를 다시 뽑지 못하게 한다.
+// 저장소가 막히면 player() 가 매번 새 id 를 주므로 한 번 뽑은 값을 그날 내내 쓴다.
+let fortuneMemo = null;
+function dayFortune() {
+  const day = todayKey();
+  if (fortuneMemo?.day !== day) fortuneMemo = { day, id: pickFortune(seeded(daySeed(`${day}:${player().id}:fortune`))) };
+  return fortuneMemo.id;
+}
+
 function todayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
@@ -1216,7 +1411,7 @@ async function hit() {
   }
 
   if (hp >= acornType.hp) {
-    today = { date: todayKey(), fortune: pickIndex(FORTUNES), lucky: pick(LUCKY), careful: pick(CAREFUL), taps, type: acornType.id };
+    today = { date: todayKey(), fortune: dayFortune(), lucky: pick(LUCKY), careful: pick(CAREFUL), taps, type: acornType.id };
     saveToday(today);
     lockButton();
     fillSlip();
@@ -1246,6 +1441,7 @@ function sealSvg() {
 function fillSlip() {
   slip.innerHTML = '<div class="strip-head"></div><div class="strip-grade"></div>';
   slip.lastChild.textContent = verticalText(FORTUNES[today.fortune][0]);
+  paintStrip(slip, FORTUNES[today.fortune][0]);
   slip.append(sealSvg());
 }
 document.querySelector(".result .strip").append(sealSvg());
@@ -1263,6 +1459,7 @@ function showResult({ fortune, lucky, careful, taps }) {
   document.getElementById("result-date").textContent = dateLabel(today.date);
   document.getElementById("result-type").textContent = acornType.name;
   document.getElementById("grade").textContent = verticalText(grade);
+  paintStrip(document.getElementById("grade").parentElement, grade);
   document.getElementById("title").textContent = title;
   document.getElementById("body").textContent = body;
   document.getElementById("skill").textContent = `${taps}번, ${skillLabel(taps)}`;
@@ -1391,6 +1588,12 @@ async function popAcorn() {
   showSplitAcorn();
   const mid = stage.clientWidth / 2;
   burst("final", mid, acornTop() + 12 * CELL);
+  if (isGolden()) {
+    goldFlash();
+    auraSwell(1.6);
+    particles(mid, acornTop() + 8 * CELL, "--crown", 16, 16 * CELL);
+    particles(mid, acornTop() + 8 * CELL, "--acorn-hi-gold", 10, 12 * CELL);
+  }
   quake(2 * PX);
   particles(mid, acornTop() + 12 * CELL, "--acorn-inner", 8, 10 * CELL);
   particles(mid, acornTop() + 4 * CELL, "--cap", 6, 8 * CELL);
@@ -1491,7 +1694,7 @@ function exitEndless() {
   document.body.classList.remove("endless");
   $("endless-over").hidden = $("endless-hud").hidden = true;
   rollBtn.hidden = false;
-  setAcornType(ACORN_TYPES.find(t => t.id === today.type) ?? ACORN_TYPES[1]);
+  setAcornType(acornById(today.type));
   showToday();
 }
 
@@ -1661,31 +1864,43 @@ async function renderCard() {
   const drawStrip = (x, y, w, headH, head, grade, font, lineH, pad) => {
     const chars = [...grade], T = B, F = stripFrame(w), S = sealSize(w);
     const h = stripHeight(w, headH, chars.length, lineH, pad);
+    const tone = GRADE_PAPER[grade], heaven = grade === "천운";
+    const paper = v(tone ? `--slip-paper-${tone}` : "--slip-paper"), line = v(tone ? `--slip-line-${tone}` : "--slip-line");
     g.fillStyle = v("--outline"); g.fillRect(x - B, y - B, w + 2 * B, h + B);
-    g.fillStyle = v("--slip-line"); g.fillRect(x + F, y + F, w - 2 * F, h - 2 * F);
-    g.fillStyle = v("--slip-paper"); g.fillRect(x, y, w, F); g.fillRect(x, y + h - F, w, F);
+    g.fillStyle = line; g.fillRect(x + F, y + F, w - 2 * F, h - 2 * F);
+    g.fillStyle = paper; g.fillRect(x, y, w, F); g.fillRect(x, y + h - F, w, F);
     g.fillRect(x, y, F, h); g.fillRect(x + w - F, y, F, h);
     g.fillRect(x + F + B, y + F + B, w - 2 * F - 2 * B, h - 2 * F - 2 * B);
+    if (heaven) {
+      g.fillStyle = line; g.fillRect(x + F + 2 * B, y + F + 2 * B, w - 2 * F - 4 * B, h - 2 * F - 4 * B);
+      g.fillStyle = paper; g.fillRect(x + F + 3 * B, y + F + 3 * B, w - 2 * F - 6 * B, h - 2 * F - 6 * B);
+    }
     const right = x + w + B;
     for (let tx = x - B; tx < right; tx += 4 * T) {
       g.fillStyle = v("--outline");
       g.fillRect(tx, y + h, Math.min(2 * T, right - tx), T);
       if (tx + 2 * T < right) g.fillRect(tx + 2 * T, y + h + T, Math.min(2 * T, right - tx - 2 * T), T);
-      g.fillStyle = v("--slip-paper");
+      g.fillStyle = paper;
       if (tx + 2 * T < x + w) g.fillRect(tx + 2 * T, y + h, Math.min(2 * T, x + w - tx - 2 * T), T);
     }
     let cy = y + F + B;
     if (head) {
-      text(head, x + w / 2, cy + (headH - 36) / 2, "36px Galmuri9", v("--slip-line"), "center");
-      g.fillStyle = v("--slip-line"); g.fillRect(x + F + B, cy + headH, w - 2 * F - 2 * B, B);
+      text(head, x + w / 2, cy + (headH - 36) / 2, "36px Galmuri9", line, "center");
+      g.fillStyle = line; g.fillRect(x + F + B, cy + headH, w - 2 * F - 2 * B, B);
       cy += headH + B;
     }
     cy += pad;
-    chars.forEach((ch, i) => text(ch, x + w / 2, cy + i * lineH, font, v("--slip-ink"), "center"));
+    chars.forEach((ch, i) => text(ch, x + w / 2, cy + i * lineH, font, v(heaven ? "--crown" : "--slip-ink"), "center"));
     cy += chars.length * lineH + pad / 2;
     const u = S / SEAL.length, sx = x + (w - S) / 2;
-    g.fillStyle = v("--seal");
+    g.fillStyle = v(heaven ? "--crown" : "--seal");
     SEAL.forEach((row, ry) => [...row].forEach((ch, rx) => { if (ch === "R") g.fillRect(sx + rx * u, cy + ry * u, u, u); }));
+    if (heaven) {
+      const su = Math.max(1, Math.round(w * 0.22 / STAR.length)), ss = su * STAR.length;
+      g.fillStyle = v("--crown");
+      for (const [px, py] of [[x + w - ss / 2, y - ss / 2], [x - ss / 2, y + h - ss / 2]])
+        STAR.forEach((row, ry) => [...row].forEach((ch, rx) => { if (ch === "X") g.fillRect(px + rx * su, py + ry * su, su, su); }));
+    }
     return h + 2 * T;
   };
 
@@ -2108,13 +2323,17 @@ drawBackdrop();
 sizeAcorn();
 drawScene();
 today = loadToday();
-acornType = today ? ACORN_TYPES.find(t => t.id === today.type) ?? ACORN_TYPES[1] : pick(ACORN_TYPES);
+acornType = today ? acornById(today.type) : FORTUNES[dayFortune()][0] === "천운" ? GOLDEN_ACORN : pick(ACORN_TYPES);
 acorn.classList.add(acornType.id);
 const lastRun = loadJson(ENDLESS_KEY);
 if (today && lastRun?.date === todayKey() && lastRun.open && lastRun.run) resumeEndless(lastRun.run);
 else if (today) showToday();
 else {
   resetAcorn();
+  if (isGolden()) {
+    auraSwell(1.5);
+    particles(stage.clientWidth / 2, acornTop() + 6 * CELL, "--crown", 12, 14 * CELL);
+  }
   gauge.speed = acornType.speed;
   gauge.newZone(true);
   gauge.start();
