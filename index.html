@@ -2319,7 +2319,7 @@ let installPrompt = null;
 }
 // 토스트는 기기마다 최대 TOAST_DAYS 날만 띄우고, 닫거나 추가하면 다시 띄우지 않는다.
 const INSTALL_KEY = "acorn-fortune-install", TOAST_DELAY_MS = 1200, DONE_SHOW_MS = 3000, TOAST_DAYS = 2;
-const INSTALL_ASK = "홈 화면에 도토리 심을까요?", INSTALL_DONE = "홈 화면에 도토리를 심었어요";
+const INSTALL_ASK = "홈에 도토리를 심을까요?", INSTALL_DONE = "홈 화면에 도토리를 심었어요";
 const canInstall = () => !installed() && (installPrompt || isKakao || (isIos && !inAppBrowser));
 let toastTimer = 0, toastWatch = null;
 function hideToast(forever) {
@@ -2554,6 +2554,19 @@ else {
   gauge.start();
 }
 if (planting) showPlant();
+
+// 휴대폰에서 문제를 볼 때 #info 로 열면 브라우저와 화면 설정을 띄운다.
+if (location.hash === "#info") setTimeout(() => {
+  const box = document.createElement("pre");
+  box.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:9;margin:0;padding:8px;font:12px/1.5 monospace;white-space:pre-wrap;word-break:break-all;background:#fff;color:#000;border:2px solid #000";
+  box.textContent = [
+    `브라우저: ${navigator.userAgent}`,
+    `다크모드: ${matchMedia("(prefers-color-scheme: dark)").matches ? "켜짐" : "꺼짐"}`,
+    `설치 창: ${installPrompt ? "띄울 수 있음" : "띄울 수 없음"}`,
+    `홈 화면에서 실행: ${installed() ? "예" : "아니요"}`,
+  ].join("\n");
+  document.body.append(box);
+}, 3000);
 </script>
 </body>
 </html>
