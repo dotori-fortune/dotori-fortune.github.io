@@ -88,7 +88,10 @@ export default {
              ON CONFLICT (day, player) DO UPDATE SET name = excluded.name, score = excluded.score, count = excluded.count, at = excluded.at`,
           ).bind(run.day, run.player, name, run.score, run.count, Date.now()),
           bump(run.score, 1),
-          ...(prev ? [bump(prev.score, -1)] : []),
+          ...(prev ? [
+            bump(prev.score, -1),
+            env.DB.prepare("DELETE FROM hist WHERE day = ?1 AND score = ?2 AND n <= 0").bind(run.day, prev.score),
+          ] : []),
         ]);
         await caches.default.delete(topKey(run.day));
       }
