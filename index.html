@@ -1295,7 +1295,6 @@ async function split() {
   wholeSvg.style.display = crackSvg.style.display = "none";
   leftSvg.style.display = rightSvg.style.display = "";
   setShadows([]);
-  sfx("split");
   const mid = stage.clientWidth / 2;
   burst("final", mid, acornTop() + 12 * CELL);
   if (isGolden()) {
@@ -1670,7 +1669,6 @@ function startEndless() {
 async function popAcorn() {
   await crackGlow(ENDLESS_GLOW_MS);
   showSplitAcorn();
-  sfx("split");
   const mid = stage.clientWidth / 2;
   burst("final", mid, acornTop() + 12 * CELL);
   if (isGolden()) {
@@ -2330,7 +2328,7 @@ let installPrompt = null;
   $("install-icon").replaceWith(acorn);
 }
 // 토스트는 기기마다 최대 TOAST_DAYS 날만 띄우고, 닫거나 추가하면 다시 띄우지 않는다.
-// 효과음은 파일 없이 그 자리에서 8비트 소리로 만든다. 판정마다 높이와 세기를 달리한다.
+// 효과음은 파일 없이 그 자리에서 8비트 소리로 만든다.
 const SOUND_KEY = "acorn-fortune-sound";
 const SPEAKER_ON = ["....X.......", "...XX....X..", "..XXX..X..X.", "XXXXX...X..X", "XXXXX...X..X", "XXXXX...X..X", "XXXXX...X..X", "..XXX..X..X.", "...XX....X..", "....X......."];
 const SPEAKER_OFF = ["....X.......", "...XX.......", "..XXX.......", "XXXXX.X...X.", "XXXXX..X.X..", "XXXXX...X...", "XXXXX..X.X..", "..XXX.X...X.", "...XX.......", "....X......."];
@@ -2374,25 +2372,19 @@ function hiss(t, dur, peak, type, f1, f2 = f1) {
   src.connect(bq).connect(g).connect(audio.destination);
   src.start(t);
 }
-const SFX = {
-  perfect: t => { tone("square", 880, 220, t, 0.12, 0.18); hiss(t, 0.05, 0.25, "highpass", 3000); },
-  good: t => tone("square", 520, 200, t, 0.09, 0.12),
-  miss: t => tone("triangle", 220, 110, t, 0.14, 0.2),
-  split: t => {
-    hiss(t, 0.18, 0.35, "lowpass", 4000, 400);
-    [523, 659, 784, 1047].forEach((f, i) => tone("square", f, f, t + 0.12 + i * 0.07, 0.09, 0.1));
-  },
-};
+// 가운데 칸에 맞혔을 때만 소리를 낸다.
 function sfx(kind) {
-  if (!soundOn) return;
+  if (!soundOn || kind !== "perfect") return;
   ensureAudio();
-  SFX[kind](audio.currentTime + 0.01);
+  const t = audio.currentTime + 0.01;
+  tone("square", 880, 220, t, 0.12, 0.18);
+  hiss(t, 0.05, 0.25, "highpass", 3000);
 }
 $("sound").addEventListener("click", () => {
   soundOn = !soundOn;
   localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
   renderSound();
-  sfx("good");
+  sfx("perfect");
 });
 renderSound();
 
