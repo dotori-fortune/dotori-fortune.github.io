@@ -62,6 +62,7 @@
     --slip-ink: #2B1C0E;
     --slip-line: #8E4D1E;
     --crown: #F2C14E;
+    --gold-dark: #B07D1C;
     --acorn-hi-gold: #FFF1C2;
     --seal: #B8432C;
     --kakao: #FEE500;
@@ -113,6 +114,8 @@
   /* 화면 전체에 깔리는 숲 배경. 글을 가리지 않게 바탕색과 가까운 색만 쓴다. */
   .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
   .backdrop svg { position: absolute; left: 0; top: 0; shape-rendering: crispEdges; }
+  .fireworks { position: fixed; inset: 0; z-index: -1; pointer-events: none; display: none; }
+  :root:has(body.done .acorn.golden) .fireworks { display: block; }
   body {
     margin: 0;
     min-height: 100vh;
@@ -299,7 +302,7 @@
   .acorn.soft { --acorn-light: #EDB06A; --acorn: #D98A45; --acorn-dark: #A9632B; }
   .acorn.hard { --acorn-light: #B98552; --acorn: #8F5B2E; --acorn-dark: #603C1C; }
   .acorn.stubborn { --acorn-light: #E0864A; --acorn: #B8532A; --acorn-dark: #7E3417; }
-  .acorn.golden { --acorn-hi: var(--acorn-hi-gold); --acorn-light: #F9DA7A; --acorn: var(--crown); --acorn-dark: #B07D1C; }
+  .acorn.golden { --acorn-hi: var(--acorn-hi-gold); --acorn-light: #F9DA7A; --acorn: var(--crown); --acorn-dark: var(--gold-dark); }
   /* 황금 도토리는 백 번에 한 번 나오므로 뒤에서 광선이 돌고 별이 반짝이게 한다. */
   .aura { z-index: 1; pointer-events: none; display: none; }
   .stage:has(.acorn.golden) .aura { display: block; }
@@ -1621,6 +1624,7 @@ function showResult({ fortune, lucky, careful, taps }) {
   document.getElementById("result").hidden = false;
   document.getElementById("actions").hidden = false;
   setupShare();
+  if (isGolden()) startFireworks();
 }
 
 function showToday() {
@@ -2657,6 +2661,92 @@ function drawBackdrop() {
     }
   }
   document.body.prepend(layer);
+}
+
+// 불꽃은 구 표면 방향으로 퍼지고, 구가 돌면서 앞쪽 알갱이는 크고 밝게, 뒤쪽은 작고 옅게 그려 입체로 보이게 한다.
+// 폭죽마다 번호로 씨앗을 정해 시간만으로 장면이 정해진다.
+// 반지름은 화면 높이에 비례하되 좁은 화면에서는 폭을 넘지 않는다. 알갱이는 사이트 픽셀 단위(PX)의 배수로만 그린다.
+const FIREWORK = { every: 0.7, rise: 0.6, life: 1.9, sparks: 56, gravity: 60, depth: 0.35, flash: 0.15, volley: 6, fade: 0.55, size: [0.13, 0.24], maxWidth: 0.3 };
+// 금빛 바탕에 묻히지 않게 짙은 색을 앞에, 밝은 색을 꼬리와 뒤쪽에 쓴다.
+const FIREWORK_TONES = [["--seal", "--acorn-light"], ["--gold-dark", "--crown"], ["--acorn", "--seal"], ["--acorn-dark", "--acorn-light"], ["--ground-dark", "--ground-light"]];
+const FIREWORK_TRAIL = [0.05, 0.1, 0.15];
+const FIREWORK_SHAPES = ["sphere", "ring", "double", "sphere"];
+let fireworkRun = 0;
+
+function startFireworks() {
+  const run = ++fireworkRun;
+  let cv = document.querySelector(".fireworks");
+  if (!cv) document.body.append(cv = Object.assign(document.createElement("canvas"), { className: "fireworks" }));
+  cv.setAttribute("aria-hidden", "true");
+  const g = cv.getContext("2d"), css = getComputedStyle(document.documentElement);
+  const colors = {}, color = name => colors[name] ??= css.getPropertyValue(name).trim();
+  const sphere = (n, scale = 1) => Array.from({ length: n }, (_, i) => {
+    const y = 1 - 2 * (i + 0.5) / n, r = Math.sqrt(1 - y * y), a = i * 2.39996;
+    return [Math.cos(a) * r * scale, y * scale, Math.sin(a) * r * scale];
+  });
+  const ring = n => Array.from({ length: n }, (_, i) => [Math.cos(i / n * 6.283), 0, Math.sin(i / n * 6.283)]);
+  const DIRS = {
+    sphere: sphere(FIREWORK.sparks).map(d => [d, 0]),
+    ring: ring(FIREWORK.sparks / 2).map(d => [d, 0]),
+    double: [...sphere(FIREWORK.sparks).map(d => [d, 0]), ...sphere(FIREWORK.sparks / 2, 0.5).map(d => [d, 1])],
+  };
+  const dot = (x, y, u, c) => { g.fillStyle = color(c); g.fillRect(snap(x - u / 2, u), snap(y - u / 2, u), u, u); };
+  const cross = (x, y, arm, u, c) => { for (let d = -arm; d <= arm; d += u) { dot(x + d, y, u, c); dot(x, y + d, u, c); } };
+
+  const drawBurst = (seed, start, t) => {
+    const r = seeded(seed), w = cv.width, h = cv.height;
+    const cx = w * (0.08 + 0.84 * r()), cy = h * (0.1 + 0.35 * r()), R = Math.min(w * FIREWORK.maxWidth, h * (FIREWORK.size[0] + (FIREWORK.size[1] - FIREWORK.size[0]) * r())), spin = r() * 6.3, tilt = 0.4 + r() * 0.9;
+    const tones = [FIREWORK_TONES[Math.floor(r() * FIREWORK_TONES.length)], FIREWORK_TONES[Math.floor(r() * FIREWORK_TONES.length)]];
+    const shape = FIREWORK_SHAPES[Math.floor(r() * FIREWORK_SHAPES.length)], sway = (r() - 0.5) * 40;
+    const age = t - start;
+    if (age < 0) return;
+    if (age < FIREWORK.rise) {
+      const e = 1 - (1 - age / FIREWORK.rise) ** 2, y = h + 10 - (h + 10 - cy) * e, x = cx + sway * (1 - e) * Math.sin(age * 20);
+      dot(x, y, 2 * PX, tones[0][0]);
+      for (let j = 1; j <= 4; j++) if ((Math.floor(t * 20) + j) % 3) dot(x + (j % 2 ? PX : -PX), y + j * 2 * PX, PX, tones[0][1]);
+      return;
+    }
+    const tau = age - FIREWORK.rise;
+    if (tau > FIREWORK.life) return;
+    if (tau < FIREWORK.flash) cross(cx, cy, PX + 60 * tau, PX, tones[0][0]);
+    // 알갱이마다 꺼지는 때가 달라 한꺼번에 사라지지 않는다. 꼬리부터 줄고, 작아진 뒤, 한 번 반짝이고 꺼진다.
+    const ends = DIRS[shape].map(() => FIREWORK.life * (FIREWORK.fade + (1 - FIREWORK.fade) * r()));
+    const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
+    const at = (dx, dy, dz, tt) => {
+      const reach = R * (1 - Math.exp(-4 * tt)), turn = spin + tt * 0.8, cos = Math.cos(turn), sin = Math.sin(turn);
+      const y0 = dy * cosT - dz * sinT, z0 = dy * sinT + dz * cosT;
+      const x = dx * cos - z0 * sin, z = dx * sin + z0 * cos, s = 1 / (1 - z * FIREWORK.depth);
+      return [cx + x * reach * s, cy + y0 * reach * s + FIREWORK.gravity * tt * tt, z];
+    };
+    DIRS[shape].forEach(([[dx, dy, dz], layer], i) => {
+      const [main, side] = tones[layer];
+      const p = tau / ends[i];
+      if (p > 1) return;
+      const [x, y, z] = at(dx, dy, dz, tau), front = z > -FIREWORK.depth;
+      if (p > 0.9) { cross(x, y, PX, PX, main); return; }
+      FIREWORK_TRAIL.forEach((lag, j) => { if (tau > lag && p < 0.75 - j * 0.15) { const [tx, ty] = at(dx, dy, dz, tau - lag); dot(tx, ty, PX, side); } });
+      dot(x, y, z > FIREWORK.depth && p < 0.6 ? 2 * PX : PX, front ? main : side);
+    });
+  };
+  // 몇 번에 한 번은 세 발이 같이 터진다.
+  const drawVolley = (k, t) => {
+    const start = k * FIREWORK.every, count = k % FIREWORK.volley === FIREWORK.volley - 1 ? 3 : 1;
+    for (let j = 0; j < count; j++) drawBurst(k * 7919 + 17 + j * 104729, start + j * 0.15, t);
+  };
+  const draw = t => {
+    if (cv.width !== innerWidth || cv.height !== innerHeight) { cv.width = innerWidth; cv.height = innerHeight; }
+    g.clearRect(0, 0, cv.width, cv.height);
+    const span = FIREWORK.rise + FIREWORK.life + 0.3;
+    for (let k = Math.max(0, Math.floor((t - span) / FIREWORK.every)); k <= Math.floor(t / FIREWORK.every); k++) drawVolley(k, t);
+  };
+  if (reduceMotion) { draw(FIREWORK.every * (FIREWORK.volley - 1) + FIREWORK.rise + 0.5); return; }
+  const t0 = performance.now();
+  const tick = now => {
+    if (run !== fireworkRun || !document.body.classList.contains("done") || !isGolden()) return;
+    draw(Math.max(0, now - t0) / 1000);
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 let backdropSize = "";
