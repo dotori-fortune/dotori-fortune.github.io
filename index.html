@@ -20,6 +20,14 @@
 <meta name="theme-color" content="#D9E4C2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#18210F" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
+<script>
+  // 계절은 달력으로 나눈다(봄 3~5월, 여름 6~8월, 가을 9~11월, 겨울 12~2월). ?season= 으로 다른 계절을 미리 본다.
+  document.documentElement.dataset.season = (() => {
+    const q = new URLSearchParams(location.search).get("season");
+    if (["spring", "summer", "autumn", "winter"].includes(q)) return q;
+    return ["winter", "spring", "summer", "autumn"][Math.floor((new Date().getMonth() + 1) % 12 / 3)];
+  })();
+</script>
 <style>
   :root {
     --px: 4px;
@@ -76,6 +84,85 @@
     --font-body: "Galmuri9", "Noto Sans KR", "Malgun Gothic", sans-serif;
     --font-mid: "Galmuri11", "Noto Sans KR", "Malgun Gothic", sans-serif;
     --font-title: "Galmuri14", "Galmuri11", "Noto Sans KR", sans-serif;
+    --fall-1: var(--ground-light);
+    --fall-2: var(--grass);
+    --fall-3: var(--ground);
+    --good: var(--ground-light);
+    --tree-line: #3E5F2A;
+    --tree-hi: #A6CF6C;
+    --tree: #7FAE4E;
+    --tree-shade: #5E8B3C;
+    --tree-dot: var(--tree-hi);
+    --tree-snow: #FFFFFF;
+    --tree-snow-shade: #D3E0EA;
+  }
+  /* 계절마다 숲 배경·땅·떨어지는 것의 색을 바꾼다. 계절 표시가 없으면 여름 색이다. */
+  :root[data-season="spring"] {
+    --bg: #F4DDE2;
+    --bg-deco: #EAC3CD;
+    --wood-far: #EEC9D2;
+    --wood-near: #E2B0BE;
+    --sky-deco: #FFF5F7;
+    --ground-light: #B9D77A;
+    --grass: #D3EC92;
+    --fall-1: #F7B8C6;
+    --fall-2: #EE97AC;
+    --fall-3: #FFFFFF;
+    --tree-line: #A65673;
+    --tree-hi: #FAD0DB;
+    --tree: #EDA4B8;
+    --tree-shade: #D9849C;
+    --tree-dot: #FFFFFF;
+  }
+  :root[data-season="summer"] {
+    --bg: #CDE3AA;
+    --bg-deco: #B8D493;
+    --wood-far: #B5D291;
+    --wood-near: #9DC277;
+  }
+  :root[data-season="autumn"] {
+    --bg: #F2D3A6;
+    --bg-deco: #E7BA80;
+    --wood-far: #EAB67A;
+    --wood-near: #DD9A5C;
+    --sky-deco: #FFF3DF;
+    --dust: #F7E6CB;
+    --ground-light: #D0A65A;
+    --ground: #B3843C;
+    --ground-dark: #8C6229;
+    --ground-edge: #55391A;
+    --grass: #E2B55C;
+    --fall-1: var(--acorn-light);
+    --fall-2: var(--seal);
+    --fall-3: var(--crown);
+    --tree-line: #7A2E18;
+    --tree-hi: #F5A845;
+    --tree: #E07A32;
+    --tree-shade: var(--seal);
+    --tree-dot: #F7D35E;
+  }
+  /* 겨울 땅은 눈이라 흰색에 가깝다. 종이 위 강조(--good)는 땅색 대신 바탕보다 진한 하늘색을 쓴다. */
+  :root[data-season="winter"] {
+    --bg: #C9D9E6;
+    --bg-deco: #B4C8D9;
+    --wood-far: #DCE7F0;
+    --wood-near: #EDF3F8;
+    --sky-deco: #FFFFFF;
+    --dust: #FFFFFF;
+    --ground-light: #F4F8FB;
+    --ground: #DDE7EF;
+    --ground-dark: #BCCBD8;
+    --ground-edge: #6B7F8E;
+    --grass: #FFFFFF;
+    --pebble: #8E9CA6;
+    --good: #B4C8D9;
+    --fall-1: #FFFFFF;
+    --fall-2: #FFFFFF;
+    --fall-3: #EEF4F8;
+    --tree-line: #1F3A2E;
+    --tree-hi: #5C8C70;
+    --tree: #43705A;
+    --tree-shade: #2F5443;
   }
   /* 브라우저가 다크모드라고 알리지 않으면서 색을 뒤집는 경우가 있어 라이트는 only 로 막는다.
      황금 도토리 결과 화면은 다크에서도 라이트 색으로 보인다. */
@@ -100,6 +187,38 @@
       --paper: #25301A;
       --border: #0B1005;
       --drop: rgba(0, 0, 0, .5);
+    }
+    :root[data-season="spring"]:not([data-theme="light"]):not(:has(body.done .acorn.golden)) {
+      --bg: #261A20;
+      --bg-deco: #3A2530;
+      --wood-far: #2F2028;
+      --wood-near: #3A2731;
+    }
+    :root[data-season="autumn"]:not([data-theme="light"]):not(:has(body.done .acorn.golden)) {
+      --bg: #2A1A0D;
+      --bg-deco: #3D2714;
+      --wood-far: #35210F;
+      --wood-near: #432A13;
+      --ground-light: #6A5428;
+      --ground: #54421F;
+      --ground-dark: #403218;
+      --ground-edge: #1A1309;
+      --grass: #8A6E34;
+      --dust: #B39C72;
+    }
+    :root[data-season="winter"]:not([data-theme="light"]):not(:has(body.done .acorn.golden)) {
+      --bg: #111B26;
+      --bg-deco: #1E2D3C;
+      --wood-far: #223241;
+      --wood-near: #2C3E50;
+      --ground-light: #A9B8C4;
+      --ground: #8494A1;
+      --ground-dark: #62717D;
+      --ground-edge: #1A2128;
+      --grass: #DCE5EC;
+      --pebble: #56616A;
+      --dust: #DCE5EC;
+      --good: #3A4F63;
     }
   }
   /* 황금 도토리를 깬 결과 화면은 숲 배경을 금빛으로 바꾼다. 공유 그림 바탕도 --bg 를 읽는다. */
@@ -284,7 +403,7 @@
   }
   .gauge[hidden] { display: none; }
   .gauge .zone { position: absolute; top: 0; bottom: 0; }
-  .gauge .good { background: var(--ground-light); }
+  .gauge .good { background: var(--good); }
   .gauge .perfect { background: var(--acorn); }
   /* 게이지 아래 여백 안에 띄워 화면 높이를 늘리지 않는다. */
   .gauge-hint {
@@ -328,6 +447,7 @@
   .sky .star { display: none; }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]):not(:has(body.done .acorn.golden)) .sky .star { display: inline; }
+    :root:not([data-theme="light"]):not(:has(body.done .acorn.golden)) .backdrop .tree { opacity: .4; }
     :root:not([data-theme="light"]):not(:has(body.done .acorn.golden)) .sky .cloud { display: none; }
   }
 
@@ -435,7 +555,7 @@
     cursor: pointer;
     text-decoration: none;
   }
-  .tool:hover { background: var(--ground-light); }
+  .tool:hover { background: var(--good); }
   .tool:focus-visible { outline: var(--px) dashed var(--acorn); outline-offset: 8px; }
   @media (max-width: 560px) {
     .actions { gap: var(--gap-s); }
@@ -524,8 +644,8 @@
     gap: var(--gap-s);
     padding: 4px var(--gap-s);
   }
-  .rank-list li + li { border-top: var(--px) dashed var(--ground-light); }
-  .rank-list li.me { background: var(--ground-light); }
+  .rank-list li + li { border-top: var(--px) dashed var(--good); }
+  .rank-list li.me { background: var(--good); }
   .rank-list .no { color: var(--ink-soft); }
   .rank-list li:nth-child(-n+3) .no { color: var(--acorn); }
   .rank-list li.me .no { color: inherit; }
@@ -831,7 +951,7 @@ function paintStrip(el, grade) {
   }
 }
 const LUCKY = ["따뜻한 보리차", "왼쪽 주머니", "두 번째 서랍", "점심 뒤 산책 15분", "둥근 머그잔", "창가 자리", "노란 포스트잇", "초록색 펜", "손글씨 메모", "단골 가게",
-  "오후 3시", "작은 화분", "한 정거장 걷기", "점심 메뉴 2번", "귤 한 개", "초콜릿 한 조각", "아침 물 한 잔", "파란 볼펜", "손목시계", "흰 운동화",
+  "오후 3시", "작은 화분", "한 정거장 걷기", "점심 메뉴 2번", "초콜릿 한 조각", "아침 물 한 잔", "파란 볼펜", "손목시계", "흰 운동화",
   "먼저 온 엘리베이터", "편의점 1+1", "새로 닦은 안경", "깨끗하게 치운 책상", "오전 11시", "오랜만에 온 연락", "하늘 사진", "아이스 아메리카노", "따뜻한 라떼",
   "탕비실 간식", "동료가 준 사탕", "삼각김밥", "회사 앞 국밥집", "지하철 빈자리", "버스 맨 뒷자리", "텀블러", "보조배터리", "형광펜", "줄 없는 노트",
   "계단으로 한 층", "점심 뒤 양치", "새 지우개", "오후 간식 시간", "포스트잇 첫 장", "새로 산 노트",
@@ -839,9 +959,9 @@ const LUCKY = ["따뜻한 보리차", "왼쪽 주머니", "두 번째 서랍", "
   "오늘의 메뉴", "샐러드 한 그릇", "김밥 한 줄", "떡볶이", "사과 한 쪽", "견과류 한 줌", "녹차 티백", "따뜻한 물 한 잔", "동료의 웃음", "먼저 건넨 인사",
   "칭찬 이모티콘", "점심 같이 먹을 동료", "후드 집업", "편한 슬리퍼", "카디건", "단정한 셔츠", "운동화 끈", "작은 손거울", "핸드크림", "립밤", "물티슈",
   "일찍 끝난 회의", "환승 없는 길", "신호 한 번에 건너기", "택배 도착 알림", "동네 빵집", "새로 빤 이불", "고양이 영상", "좋아하는 노래 한 곡", "일찍 잠들기",
-  "공원 벤치", "주말 계획", "친구의 안부 메시지", "새 칫솔", "따뜻한 샤워", "가족 사진", "화분에 물 주기", "편의점 신상", "붕어빵", "노을", "동네 한 바퀴",
-  "자전거", "셔플 첫 곡", "갓 지은 밥", "계란말이", "뜨끈한 어묵 국물", "호빵", "빨래 개기", "창문 환기", "보송한 수건", "새 양말", "줄무늬 옷", "밤식빵",
-  "유자차", "구운 고구마"];
+  "공원 벤치", "주말 계획", "친구의 안부 메시지", "새 칫솔", "따뜻한 샤워", "가족 사진", "화분에 물 주기", "편의점 신상", "노을", "동네 한 바퀴",
+  "자전거", "셔플 첫 곡", "갓 지은 밥", "계란말이", "빨래 개기", "창문 환기", "보송한 수건", "새 양말", "줄무늬 옷", "밤식빵",
+  "구운 고구마"];
 const CAREFUL = ["급하게 보내는 답장", "계단 마지막 칸", "충전 안 한 이어폰", "세 번째 커피", "자정 넘은 야식", "자기 전 휴대폰", "너무 오래 앉아 있기", "발에 걸리는 전선",
   "우산 두고 나가기", "충동 구매", "배터리 10%", "급한 결정", "닫히는 지하철 문", "빈속에 마시는 커피", "책상 모서리", "알람 끄고 다시 눕기", "흰 옷에 국물",
   "가득 담은 커피", "깜빡한 일정", "잊고 있던 정기 결제", "켜 두고 나온 모니터", "대충 읽은 메일", "버스 잡으려고 뛰기", "자기 전 쇼핑앱", "전체 답장 버튼",
@@ -849,10 +969,24 @@ const CAREFUL = ["급하게 보내는 답장", "계단 마지막 칸", "충전 �
   "회의 시간 착각", "키보드 옆 음료", "의자 끝에 걸터앉기", "읽고 잊은 메시지", "점심 과식", "오후 세 시 단 음료", "식은 커피 다시 데우기", "목 숙인 자세",
   "눈 안 깜빡이기", "급하게 누른 전송", "말 끝 흐리기", "혼잣말 크게 하기", "퇴근길 장바구니", "새벽 배송 결제", "카드 할부", "고장 난 우산",
   "지워지지 않는 알림", "업데이트 미루기", "단톡방 알림 폭탄", "읽씹 오해", "목소리 큰 통화", "나중에 하겠다는 약속", "쌓인 영수증", "풀린 신발 끈", "덜 닫힌 냉장고 문",
-  "켜 둔 가스 불", "현관 비밀번호", "반품 기한", "우유 유통기한", "젖은 머리로 외출", "엉킨 충전선", "한밤중 라면", "갑자기 내리는 비", "걸으면서 보는 휴대폰",
+  "켜 둔 가스 불", "현관 비밀번호", "반품 기한", "우유 유통기한", "엉킨 충전선", "한밤중 라면", "갑자기 내리는 비", "걸으면서 보는 휴대폰",
   "뜨거운 머그잔 손잡이", "주머니 속 휴지와 빨래", "컵라면 국물", "주차 위치", "지갑 두고 나오기", "배고플 때 장보기", "미뤄 둔 병원 예약", "한 편만 더 보기",
   "젖은 바닥", "어두운 계단", "처음 신는 구두", "늦은 낮잠", "꽉 닫힌 병뚜껑", "문턱"];
 
+// 그 계절에만 맞는 항목. 오늘의 계절 목록을 공통 목록에 더해 뽑는다.
+const SEASON_LUCKY = {
+  spring: ["벚꽃길", "딸기 한 접시", "봄나물 비빔밥", "새싹 화분", "얇은 트렌치코트", "꽃집 앞 지나기", "아침 새소리"],
+  summer: ["수박 한 조각", "팥빙수", "시원한 냉면", "얼음 띄운 물", "휴대용 선풍기", "그늘진 벤치", "매실차"],
+  autumn: ["노란 은행잎", "단풍길", "햇밤", "홍시", "얇은 니트", "높은 하늘", "햅쌀밥"],
+  winter: ["붕어빵", "호빵", "유자차", "구운 고구마", "뜨끈한 어묵 국물", "귤 한 개", "털장갑", "핫팩", "목도리"],
+};
+const SEASON_CAREFUL = {
+  spring: ["미세먼지", "꽃가루", "아침저녁 일교차", "얇게 입고 나간 저녁"],
+  summer: ["센 에어컨 바람", "밖에 오래 둔 음식", "모기", "한낮 햇볕", "찬 음료 연달아 마시기"],
+  autumn: ["환절기 감기", "젖은 낙엽 길", "은행 열매", "쌀쌀한 새벽 공기"],
+  winter: ["빙판길", "정전기", "젖은 머리로 외출", "건조한 공기", "주머니에서 꺼낸 손"],
+};
+const SEASON = document.documentElement.dataset.season;
 const CLOUD = ["...XXX......", "..XXXXX.XX..", ".XXXXXXXXXX.", "XXXXXXXXXXXX"];
 // 붉은 도장 안에 도토리 모양을 비워 둔다.
 const SEAL = [
@@ -1565,7 +1699,7 @@ async function hit() {
   }
 
   if (hp >= acornType.hp) {
-    today = { date: todayKey(), fortune: dayFortune(), lucky: pick(LUCKY), careful: pick(CAREFUL), taps, type: acornType.id };
+    today = { date: todayKey(), fortune: dayFortune(), lucky: pick([...LUCKY, ...SEASON_LUCKY[SEASON]]), careful: pick([...CAREFUL, ...SEASON_CAREFUL[SEASON]]), taps, type: acornType.id };
     saveToday(today);
     lockButton();
     fillSlip();
@@ -2179,7 +2313,7 @@ async function renderRankCard() {
   if (!rows.length) text("아직 올린 기록이 없어요.", W / 2, ry + 16, "36px Galmuri9", v("--ink-soft"), "center");
   rows.forEach(r => {
     if (!r) { text("⋯", W / 2, ry + 12, "44px Galmuri11", v("--ink-soft"), "center"); ry += RH; return; }
-    if (r.me) { g.fillStyle = v("--ground-light"); g.fillRect(left - 16, ry, right - left + 32, RH - 8); }
+    if (r.me) { g.fillStyle = v("--good"); g.fillRect(left - 16, ry, right - left + 32, RH - 8); }
     const noColor = r.me ? v("--ink") : r.no <= 3 ? v("--acorn") : v("--ink-soft");
     text(`${r.no}위`, left, ry + 12, "44px Galmuri11", noColor);
     text(r.name, left + 150, ry + 12, "44px Galmuri11", v("--ink"));
@@ -2595,8 +2729,18 @@ const PEBBLES = ["XX..", "XX.X"];
 const BG_CELL = 2 * PX;
 // 무늬 하나가 차지하는 넓이(px²). 클수록 듬성하다.
 const BG_DECO_AREA = 140 * 140;
-const FALLING_LEAVES = 6;
-const LEAF_COLORS = ["--acorn-light", "--cap-light", "--ground-light"];
+const PETAL = [".XX", "XXX", "XX."];
+const SNOW = ["X.X", ".X.", "X.X"];
+const BLOSSOM = [".X.X.", "XX.XX", "..X..", "XX.XX", ".X.X."];
+const FLAKE = ["..X..", "X.X.X", ".XXX.", "X.X.X", "..X.."];
+// 계절마다 바탕 무늬, 떨어지는 그림, 떨어지는 개수를 정한다.
+const SEASON_ART = {
+  spring: { decos: [BLOSSOM, PETAL, SPRIG], falling: PETAL, count: 14 },
+  summer: { decos: [LEAF, SPRIG, PEBBLES], falling: LEAF, count: 6 },
+  autumn: { decos: [LEAF, LEAF, PEBBLES], falling: LEAF, count: 14 },
+  winter: { decos: [FLAKE, SNOW, FLAKE], falling: SNOW, count: 30 },
+};
+const FALLING_COLORS = ["--fall-1", "--fall-2", "--fall-3"];
 
 // 창 크기가 바뀌어도 무늬 자리가 뒤섞이지 않게 고정된 씨앗으로 뽑는다.
 function seeded(seed) {
@@ -2629,6 +2773,92 @@ function woodLine(svg, w, h, rnd, color, minR, maxR, lift) {
   tops.forEach((t, col) => addRect(svg, col * BG_CELL, h - t * BG_CELL, BG_CELL, t * BG_CELL, color));
 }
 
+// 화면 양쪽 끝에 계절 나무를 반쯤 걸쳐 세운다. [가로 위치 비율, 크기 비율]
+const TREES = [[0.03, 1], [0.15, 0.55], [0.85, 0.55], [0.97, 1]];
+// 이보다 좁은 화면은 작은 나무가 게이지와 겹쳐 큰 나무만 세운다.
+const NARROW_TREES = 600;
+
+// 나무는 사이트 픽셀(PX) 격자에 칠한 뒤 같은 색이 이어지는 가로 칸을 사각형 하나로 묶어 그린다.
+// 빛은 왼쪽 위에서 온다. 잎 덩어리를 뒤에서 앞으로 겹쳐 쌓고, 앞 덩어리는 뒤 덩어리에 그림자를 드리운다.
+const TREE_CLUMPS = [
+  [-0.3, -0.55, 0.42], [0.32, -0.5, 0.4], [0, -0.78, 0.38],
+  [-0.62, -0.05, 0.42], [0.62, 0, 0.42], [0, -0.2, 0.55],
+  [-0.32, 0.36, 0.42], [0.34, 0.38, 0.4],
+];
+
+function drawTree(svg, cx, base, S, rnd) {
+  const W = Math.ceil(S * 2.8) + 4, H = Math.ceil(S * 3.4) + 4, mid = Math.floor(W / 2), bottom = H - 1;
+  const g = Array.from({ length: H }, () => new Array(W).fill(null));
+  const own = Array.from({ length: H }, () => new Array(W).fill(-1));
+  const at = (a, x, y) => a[y]?.[x];
+
+  const trunkW = Math.max(3, Math.round(S * (SEASON === "winter" ? 0.18 : 0.26)));
+  const trunkTop = bottom - Math.round(S * (SEASON === "winter" ? 0.45 : 0.7));
+  for (let y = trunkTop; y <= bottom; y++) {
+    const flare = Math.max(0, 2 - (bottom - y)), l = mid - (trunkW >> 1) - flare, r = mid + (trunkW >> 1) + flare;
+    for (let x = l; x <= r; x++) {
+      const k = (x - l) / Math.max(1, r - l);
+      g[y][x] = k < 0.3 ? "--cap-light" : k > 0.7 ? "--cap-dark" : "--cap";
+      own[y][x] = -2;
+    }
+  }
+
+  if (SEASON === "winter") {
+    const top = trunkTop - Math.round(S * 2.6);
+    for (let t = 0; t < 4; t++) {
+      const tTop = top + Math.round(t * S * 0.55), tH = Math.round(S * (0.7 + 0.12 * t)), maxHalf = S * (0.42 + 0.2 * t);
+      const snowDepth = Array.from({ length: W }, () => Math.round(tH * 0.25) + Math.floor(rnd() * 2));
+      for (let k = 0; k < tH; k++) {
+        const half = Math.round((k + 1) / tH * maxHalf) + (k % 3 === 2 ? 1 : 0);
+        for (let x = mid - half; x <= mid + half; x++) {
+          if (k === tH - 1 && (x - mid + 64) % 4 < 2) continue;
+          const y = tTop + k;
+          if (!g[y]) continue;
+          own[y][x] = t;
+          const snowy = k < snowDepth[x] || (k >= tH - 2 && x < mid - half * 0.4 && (x - mid + 64) % 4 >= 2);
+          g[y][x] = snowy ? (x <= mid ? "--tree-snow" : "--tree-snow-shade")
+            : x < mid - half + 2 ? "--tree-hi" : x < mid ? "--tree" : "--tree-shade";
+        }
+      }
+    }
+  } else {
+    const clumps = TREE_CLUMPS.map(([dx, dy, r]) => [
+      mid + (dx + (rnd() - 0.5) * 0.12) * S,
+      trunkTop - S * 0.75 + (dy + (rnd() - 0.5) * 0.12) * S,
+      r * S * (0.95 + rnd() * 0.1),
+    ]);
+    clumps.forEach(([ccx, ccy, r], i) => {
+      for (let y = Math.floor(ccy - r); y <= ccy + r; y++) for (let x = Math.floor(ccx - r); x <= ccx + r; x++) {
+        if (!g[y] || x < 0 || x >= W || Math.hypot(x - ccx, y - ccy) > r) continue;
+        own[y][x] = i;
+      }
+    });
+    own.forEach((row, y) => row.forEach((i, x) => {
+      if (i < 0) return;
+      const [ccx, ccy, r] = clumps[i];
+      let light = -(0.55 * (x - ccx) + 0.85 * (y - ccy)) / r;
+      if (at(own, x, y + 1) > i || at(own, x, y + 2) > i) light = -1;
+      g[y][x] = light > 0.45 ? "--tree-hi" : light < -0.35 ? "--tree-shade" : "--tree";
+      if (g[y][x] !== "--tree-shade" && rnd() < 0.035) g[y][x] = "--tree-dot";
+    }));
+  }
+
+  // 바깥과 맞닿은 칸에 윤곽선을 두른다.
+  const line = g.map((row, y) => row.map((c, x) => c && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !at(g, x + dx, y + dy))));
+  line.forEach((row, y) => row.forEach((edge, x) => { if (edge) g[y][x] = own[y][x] === -2 ? "--outline" : "--tree-line"; }));
+
+  const u = PX, left = snap(cx - mid * u, u), topY = base - H * u;
+  g.forEach((row, y) => {
+    for (let x = 0; x < W;) {
+      const c = row[x];
+      let n = 1;
+      while (x + n < W && row[x + n] === c) n++;
+      if (c) addRect(svg, left + x * u, topY + y * u, n * u, u, `var(${c})`, "tree");
+      x += n;
+    }
+  });
+}
+
 function drawBackdrop() {
   document.querySelector(".backdrop")?.remove();
   const w = innerWidth, h = innerHeight, rnd = seeded(20261019);
@@ -2636,20 +2866,22 @@ function drawBackdrop() {
   layer.setAttribute("aria-hidden", "true");
   const svg = svgEl(w, h);
 
-  const decos = [LEAF, SPRIG, PEBBLES];
+  const { decos, falling: art, count } = SEASON_ART[SEASON];
   for (let i = 0, n = Math.round(w * h / BG_DECO_AREA); i < n; i++) {
     const x = snap(rnd() * w, BG_CELL / 2), y = snap(rnd() * h * 0.85, BG_CELL / 2);
     drawSprite(svg, decos[i % decos.length], x, y, PX, "var(--bg-deco)", rnd() < 0.5);
   }
   woodLine(svg, w, h, rnd, "var(--wood-far)", 6, 12, 8);
+  const R = Math.min(36, Math.max(16, Math.round(Math.min(w, h) * 0.16 / PX)));
+  TREES.filter(([, k]) => w >= NARROW_TREES || k === 1).forEach(([x, k]) => drawTree(svg, x * w, h - 8 * BG_CELL, Math.round(R * k), rnd));
   woodLine(svg, w, h, rnd, "var(--wood-near)", 4, 9, 3);
   layer.append(svg);
 
   if (!reduceMotion) {
-    for (let i = 0; i < FALLING_LEAVES; i++) {
-      const leaf = svgEl(LEAF[0].length * PX, LEAF.length * PX);
-      drawSprite(leaf, LEAF, 0, 0, PX, `var(${LEAF_COLORS[i % LEAF_COLORS.length]})`, i % 2);
-      leaf.style.left = `${snap((i + 0.5) / FALLING_LEAVES * w + rand(-40, 40))}px`;
+    for (let i = 0; i < count; i++) {
+      const leaf = svgEl(art[0].length * PX, art.length * PX);
+      drawSprite(leaf, art, 0, 0, PX, `var(${FALLING_COLORS[i % FALLING_COLORS.length]})`, i % 2);
+      leaf.style.left = `${snap((i + 0.5) / count * w + rand(-40, 40))}px`;
       layer.append(leaf);
       const sway = rand(30, 70) * (i % 2 ? 1 : -1);
       leaf.animate([
@@ -2769,6 +3001,8 @@ new ResizeObserver(() => requestAnimationFrame(() => {
 setFavicon();
 backdropSize = `${innerWidth}x${innerHeight}`;
 drawBackdrop();
+document.querySelector(`meta[name="theme-color"][media*="${matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}"]`)
+  ?.setAttribute("content", getComputedStyle(document.documentElement).getPropertyValue("--bg").trim());
 sizeAcorn();
 drawScene();
 const planting = takePlant();
