@@ -2775,8 +2775,11 @@ function woodLine(svg, w, h, rnd, color, minR, maxR, lift) {
 
 // 화면 양쪽 끝에 계절 나무를 반쯤 걸쳐 세운다. [가로 위치 비율, 크기 비율]
 const TREES = [[0.03, 1], [0.15, 0.55], [0.85, 0.55], [0.97, 1]];
-// 이보다 좁은 화면은 작은 나무가 게이지와 겹쳐 큰 나무만 세운다.
+// 이보다 좁은 화면은 작은 나무가 게이지와 겹쳐 큰 나무만 세우고, 줄기를 늘려 잎이 게이지·버튼 위로 드러나게 한다.
 const NARROW_TREES = 600;
+// 좁은 화면에서 잎 아래끝이 놓일 높이(화면 위에서부터 비율)와 나무 최소 크기(PX 칸).
+const NARROW_CANOPY_Y = 0.64;
+const NARROW_TREE_MIN = 20;
 
 // 나무는 사이트 픽셀(PX) 격자에 칠한 뒤 같은 색이 이어지는 가로 칸을 사각형 하나로 묶어 그린다.
 // 빛은 왼쪽 위에서 온다. 잎 덩어리를 뒤에서 앞으로 겹쳐 쌓고, 앞 덩어리는 뒤 덩어리에 그림자를 드리운다.
@@ -2786,14 +2789,14 @@ const TREE_CLUMPS = [
   [-0.32, 0.36, 0.42], [0.34, 0.38, 0.4],
 ];
 
-function drawTree(svg, cx, base, S, rnd) {
-  const W = Math.ceil(S * 2.8) + 4, H = Math.ceil(S * 3.4) + 4, mid = Math.floor(W / 2), bottom = H - 1;
+function drawTree(svg, cx, base, S, rnd, trunkLen = Math.round(S * (SEASON === "winter" ? 0.45 : 0.7))) {
+  const W = Math.ceil(S * 2.8) + 4, H = trunkLen + Math.ceil(S * 2.8) + 4, mid = Math.floor(W / 2), bottom = H - 1;
   const g = Array.from({ length: H }, () => new Array(W).fill(null));
   const own = Array.from({ length: H }, () => new Array(W).fill(-1));
   const at = (a, x, y) => a[y]?.[x];
 
   const trunkW = Math.max(3, Math.round(S * (SEASON === "winter" ? 0.18 : 0.26)));
-  const trunkTop = bottom - Math.round(S * (SEASON === "winter" ? 0.45 : 0.7));
+  const trunkTop = bottom - trunkLen;
   for (let y = trunkTop; y <= bottom; y++) {
     const flare = Math.max(0, 2 - (bottom - y)), l = mid - (trunkW >> 1) - flare, r = mid + (trunkW >> 1) + flare;
     for (let x = l; x <= r; x++) {
@@ -2872,8 +2875,10 @@ function drawBackdrop() {
     drawSprite(svg, decos[i % decos.length], x, y, PX, "var(--bg-deco)", rnd() < 0.5);
   }
   woodLine(svg, w, h, rnd, "var(--wood-far)", 6, 12, 8);
-  const R = Math.min(36, Math.max(16, Math.round(Math.min(w, h) * 0.16 / PX)));
-  TREES.filter(([, k]) => w >= NARROW_TREES || k === 1).forEach(([x, k]) => drawTree(svg, x * w, h - 8 * BG_CELL, Math.round(R * k), rnd));
+  const narrow = w < NARROW_TREES, treeBase = h - 8 * BG_CELL;
+  const R = Math.min(36, Math.max(narrow ? NARROW_TREE_MIN : 16, Math.round(Math.min(w, h) * 0.16 / PX)));
+  const trunkLen = narrow ? Math.max(0, Math.round((treeBase - h * NARROW_CANOPY_Y) / PX)) : undefined;
+  TREES.filter(([, k]) => !narrow || k === 1).forEach(([x, k]) => drawTree(svg, x * w, treeBase, Math.round(R * k), rnd, trunkLen));
   woodLine(svg, w, h, rnd, "var(--wood-near)", 4, 9, 3);
   layer.append(svg);
 
