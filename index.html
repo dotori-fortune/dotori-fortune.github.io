@@ -2095,10 +2095,20 @@ const sealSize = w => Math.floor(w * 0.5 / SEAL.length) * SEAL.length;
 const stripHeight = (w, headH, n, lineH, pad) =>
   2 * (stripFrame(w) + CARD.BORDER) + (headH ? headH + CARD.BORDER : 0) + pad + n * lineH + pad / 2 + sealSize(w) + pad;
 
-// 공유 그림의 바탕과 그리기 도구. 도토리 종류별 몸통 색이 .acorn 에 걸려 있어 거기서 색을 읽는다.
-function cardCanvas() {
+// 공유 그림은 계절과 상관없이 기본 숲 색으로 그린다. 계절 표시를 잠깐 떼고 색을 한꺼번에 읽어 둔다.
+// 도토리 종류별 몸통 색이 .acorn 에 걸려 있어 거기서 읽는다.
+function cardColors() {
+  const root = document.documentElement, season = root.dataset.season;
+  delete root.dataset.season;
   const css = getComputedStyle(acorn);
-  const v = name => css.getPropertyValue(name).trim();
+  const colors = Object.fromEntries([...css].filter(p => p.startsWith("--")).map(p => [p, css.getPropertyValue(p).trim()]));
+  root.dataset.season = season;
+  return name => colors[name];
+}
+
+// 공유 그림의 바탕과 그리기 도구.
+function cardCanvas() {
+  const v = cardColors();
   const { W, PAD, CELL: c, U, BORDER: B } = CARD;
   const cv = document.createElement("canvas");
   cv.width = W; cv.height = 2400;
@@ -2329,7 +2339,7 @@ function kakaoCard(card) {
   const out = document.createElement("canvas");
   out.width = Math.max(card.width, Math.ceil(card.height / KAKAO_MAX_TALL)); out.height = card.height;
   const g = out.getContext("2d");
-  g.fillStyle = getComputedStyle(acorn).getPropertyValue("--bg").trim(); g.fillRect(0, 0, out.width, out.height);
+  g.fillStyle = cardColors()("--bg"); g.fillRect(0, 0, out.width, out.height);
   g.drawImage(card, (out.width - card.width) / 2, 0);
   return out;
 }
